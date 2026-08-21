@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { screen, fireEvent } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { useReviewStore } from '@/stores/review-store'
 import { CommentPanel } from '../comment-panel'
 
@@ -37,7 +38,7 @@ describe('CommentPanel onSeekToTimecode', () => {
   it('routes timecode clicks through the override instead of the store', () => {
     const onSeek = vi.fn()
     const storeSeek = vi.spyOn(useReviewStore.getState(), 'seekTo')
-    render(
+    renderWithI18n(
       <CommentPanel
         comments={[timecodedComment()]}
         onResolve={noop} onDelete={noop}
@@ -55,7 +56,7 @@ describe('CommentPanel onSeekToTimecode', () => {
 describe('CommentPanel onShowAnnotation', () => {
   it('routes the Show annotation button through the override instead of the store', () => {
     const onShow = vi.fn()
-    render(
+    renderWithI18n(
       <CommentPanel
         comments={[annotatedComment()]}
         onResolve={noop} onDelete={noop}
@@ -72,7 +73,7 @@ describe('CommentPanel onShowAnnotation', () => {
 
   it('routes the whole-row click through the override (annotated comment)', () => {
     const onShow = vi.fn()
-    render(
+    renderWithI18n(
       <CommentPanel
         comments={[annotatedComment()]}
         onResolve={noop} onDelete={noop}
@@ -89,7 +90,7 @@ describe('CommentPanel onShowAnnotation', () => {
 
   it('row click on a drawing-less comment routes null through the override', () => {
     const onShow = vi.fn()
-    render(
+    renderWithI18n(
       <CommentPanel
         comments={[timecodedComment()]}
         onResolve={noop} onDelete={noop}
@@ -106,7 +107,7 @@ describe('CommentPanel onShowAnnotation', () => {
 
   it('timecode-badge click routes the annotation through the override', () => {
     const onShow = vi.fn()
-    render(
+    renderWithI18n(
       <CommentPanel
         comments={[annotatedComment()]}
         onResolve={noop} onDelete={noop}
@@ -122,7 +123,7 @@ describe('CommentPanel onShowAnnotation', () => {
   })
 
   it('defaults to the store when the override is omitted', () => {
-    render(
+    renderWithI18n(
       <CommentPanel
         comments={[annotatedComment()]}
         onResolve={noop} onDelete={noop}

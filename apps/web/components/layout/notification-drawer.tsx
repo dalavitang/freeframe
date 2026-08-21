@@ -11,8 +11,9 @@ import {
   Settings,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useNotificationStore } from '@/stores/notification-store'
-import { formatRelativeTime } from '@/lib/utils'
+import { useFormatters } from '@/hooks/use-formatters'
 import { cn } from '@/lib/utils'
 import type { Notification, NotificationType } from '@/types'
 
@@ -24,29 +25,34 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   approval: CheckCircle,
 }
 
-function getNotificationText(n: Notification): { title: string; subtitle: string | null } {
-  const actor = n.actor_name || 'Someone'
-  const asset = n.asset_name || 'an asset'
+function getNotificationText(
+  n: Notification,
+  t: ReturnType<typeof useTranslations<'notifications'>>,
+): { title: string; subtitle: string | null } {
+  const actor = n.actor_name || t('actorFallback')
+  const asset = n.asset_name || t('assetFallback')
   switch (n.type) {
     case 'mention':
-      return { title: `${actor} mentioned you on ${asset}`, subtitle: n.comment_preview || null }
+      return { title: t('mention', { actor, asset }), subtitle: n.comment_preview || null }
     case 'comment':
-      return { title: `${actor} commented on ${asset}`, subtitle: n.comment_preview || null }
+      return { title: t('comment', { actor, asset }), subtitle: n.comment_preview || null }
     case 'assignment':
-      return { title: `${actor} assigned you to ${asset}`, subtitle: null }
+      return { title: t('assignment', { actor, asset }), subtitle: null }
     case 'approval':
-      return { title: `${actor} updated approval on ${asset}`, subtitle: null }
+      return { title: t('approval', { actor, asset }), subtitle: null }
     case 'due_soon':
-      return { title: `${asset} is due soon`, subtitle: null }
+      return { title: t('dueSoon', { asset }), subtitle: null }
     default:
-      return { title: 'New notification', subtitle: null }
+      return { title: t('newNotification'), subtitle: null }
   }
 }
 
 function NotificationItem({ notification, onClose }: { notification: Notification; onClose: () => void }) {
+  const t = useTranslations('notifications')
+  const { formatRelativeTime } = useFormatters()
   const { markAsRead } = useNotificationStore()
   const Icon = notificationIcons[notification.type]
-  const { title, subtitle } = getNotificationText(notification)
+  const { title, subtitle } = getNotificationText(notification, t)
 
   function handleClick() {
     if (!notification.read) markAsRead(notification.id)
@@ -98,6 +104,8 @@ interface NotificationDrawerProps {
 }
 
 export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
+  const t = useTranslations('notifications')
+  const layout = useTranslations('layout')
   const { notifications, isLoading, fetchNotifications, markAllRead, unreadCount } =
     useNotificationStore()
   const [tab, setTab] = React.useState<'all' | 'unread'>('all')
@@ -119,13 +127,13 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
       <div className="fixed left-[52px] top-0 z-50 h-full w-[380px] border-r border-border bg-bg-primary shadow-2xl flex flex-col animate-in slide-in-from-left-2 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
-          <span className="text-sm font-semibold text-text-primary">Notifications</span>
+          <span className="text-sm font-semibold text-text-primary">{layout('notifications')}</span>
           <div className="flex items-center gap-1">
             <Link
               href="/settings/notifications"
               onClick={onClose}
               className="flex items-center justify-center h-7 w-7 rounded-md text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
-              title="Notification settings"
+              title={t('settingsTitle')}
             >
               <Settings className="h-4 w-4" />
             </Link>
@@ -148,7 +156,7 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
                 tab === 'all' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary',
               )}
             >
-              All
+              {t('tabAll')}
             </button>
             <button
               onClick={() => setTab('unread')}
@@ -157,7 +165,7 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
                 tab === 'unread' ? 'text-text-primary' : 'text-text-tertiary hover:text-text-secondary',
               )}
             >
-              Unread
+              {t('tabUnread')}
             </button>
           </div>
           {unreadCount > 0 && (
@@ -165,7 +173,7 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
               onClick={markAllRead}
               className="text-xs text-text-tertiary hover:text-text-primary transition-colors"
             >
-              Mark all as read
+              {t('markAllRead')}
             </button>
           )}
         </div>
@@ -183,8 +191,8 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
               <div className="h-14 w-14 rounded-full bg-bg-tertiary flex items-center justify-center mb-3">
                 <Bell className="h-7 w-7 text-text-tertiary" />
               </div>
-              <p className="text-sm font-medium text-text-primary">No Updates Yet</p>
-              <p className="text-xs text-text-tertiary mt-1">New activity on your account will show here.</p>
+              <p className="text-sm font-medium text-text-primary">{t('emptyTitle')}</p>
+              <p className="text-xs text-text-tertiary mt-1">{t('emptyDescription')}</p>
             </div>
           ) : (
             <div className="p-1 space-y-0.5">

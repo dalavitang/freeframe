@@ -18,6 +18,7 @@ import {
   Search,
 } from "lucide-react";
 import { cn, copyToClipboard } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -51,11 +52,21 @@ interface PermissionSelectProps {
   disabled?: boolean;
 }
 
+function usePermissionLabels() {
+  const t = useTranslations("shareDialog");
+  return {
+    view: t("permissionView"),
+    comment: t("permissionComment"),
+    approve: t("permissionApprove"),
+  };
+}
+
 function PermissionSelect({
   value,
   onChange,
   disabled,
 }: PermissionSelectProps) {
+  const permissionLabels = usePermissionLabels();
   return (
     <Select.Root
       value={value}
@@ -87,7 +98,7 @@ function PermissionSelect({
                 value={p}
                 className="relative flex cursor-pointer select-none items-center rounded px-3 py-2 text-sm text-text-primary outline-none hover:bg-bg-hover data-[highlighted]:bg-bg-hover capitalize"
               >
-                <Select.ItemText>{p}</Select.ItemText>
+                <Select.ItemText>{permissionLabels[p]}</Select.ItemText>
               </Select.Item>
             ))}
           </Select.Viewport>
@@ -100,6 +111,8 @@ function PermissionSelect({
 // ─── Copy button ──────────────────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
+  const t = useTranslations("shareDialog");
+  const tc = useTranslations("common");
   const [status, setStatus] = React.useState<'idle' | 'copied' | 'failed'>('idle');
 
   async function handleCopy() {
@@ -117,12 +130,12 @@ function CopyButton({ text }: { text: string }) {
     <>
       {/* aria-live region for screen reader announcements */}
       <div className="sr-only" aria-live="polite" role="status">
-        {status === 'copied' ? 'URL copied to clipboard' : status === 'failed' ? 'Copy failed' : ''}
+        {status === 'copied' ? t('urlCopied') : status === 'failed' ? t('copyFailed') : ''}
       </div>
       <button
         onClick={handleCopy}
         className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
-        title="Copy to clipboard"
+        title={t('copyToClipboard')}
       >
         {status === 'copied' ? (
           <Check className="h-3.5 w-3.5 text-status-success" />
@@ -131,7 +144,7 @@ function CopyButton({ text }: { text: string }) {
         ) : (
           <Copy className="h-3.5 w-3.5" />
         )}
-        {status === 'copied' ? 'Copied!' : status === 'failed' ? 'Failed' : 'Copy'}
+        {status === 'copied' ? tc('copied') : status === 'failed' ? t('copyFailed') : tc('copy')}
       </button>
     </>
   );
@@ -144,6 +157,9 @@ interface LinkTabProps {
 }
 
 function LinkTab({ assetId }: LinkTabProps) {
+  const t = useTranslations("shareDialog");
+  const tc = useTranslations("common");
+  const permissionLabels = usePermissionLabels();
   const [permission, setPermission] = React.useState<SharePermission>("view");
   const [password, setPassword] = React.useState("");
   const [expiresAt, setExpiresAt] = React.useState("");
@@ -191,7 +207,7 @@ function LinkTab({ assetId }: LinkTabProps) {
       setGeneratedUrl(url);
       setLinks((prev) => [...prev, { ...newLink, url }]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate link");
+      setError(err instanceof Error ? err.message : t("failedToGenerate"));
     } finally {
       setGenerating(false);
     }
@@ -216,13 +232,13 @@ function LinkTab({ assetId }: LinkTabProps) {
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-text-secondary">
-              Permission
+              {t("permission")}
             </label>
             <PermissionSelect value={permission} onChange={setPermission} />
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-text-secondary">
-              Expiry (optional)
+              {t("expiryOptional")}
             </label>
             <input
               type="datetime-local"
@@ -235,13 +251,13 @@ function LinkTab({ assetId }: LinkTabProps) {
 
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-text-secondary">
-            Password (optional)
+            {t("passwordOptional")}
           </label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Leave blank for no password"
+            placeholder={t("leaveBlankForNoPassword")}
             className="flex h-9 w-full rounded-md border border-border bg-bg-secondary px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-border-focus"
           />
         </div>
@@ -253,7 +269,7 @@ function LinkTab({ assetId }: LinkTabProps) {
             onChange={(e) => setAllowDownload(e.target.checked)}
             className="rounded border-border"
           />
-          <span className="text-sm text-text-secondary">Allow download</span>
+          <span className="text-sm text-text-secondary">{t("allowDownload")}</span>
         </label>
 
         {error && <p className="text-xs text-status-error">{error}</p>}
@@ -265,7 +281,7 @@ function LinkTab({ assetId }: LinkTabProps) {
           className="w-full"
         >
           <Link2 className="h-4 w-4" />
-          Generate link
+          {t("generateLink")}
         </Button>
       </div>
 
@@ -283,12 +299,12 @@ function LinkTab({ assetId }: LinkTabProps) {
       {(loadingLinks || links.length > 0) && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-text-secondary">
-            Existing links
+            {t("existingLinks")}
           </p>
           {loadingLinks ? (
             <div className="flex items-center gap-2 py-2">
               <Loader2 className="h-4 w-4 animate-spin text-text-tertiary" />
-              <span className="text-xs text-text-tertiary">Loading…</span>
+              <span className="text-xs text-text-tertiary">{tc("loading")}</span>
             </div>
           ) : (
             <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -304,17 +320,16 @@ function LinkTab({ assetId }: LinkTabProps) {
                     <div className="flex-1 min-w-0 space-y-0.5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-text-primary capitalize">
-                          {link.permission}
+                          {permissionLabels[link.permission]}
                         </span>
                         {link.expires_at && (
                           <span className="text-2xs text-text-tertiary">
-                            expires{" "}
-                            {new Date(link.expires_at).toLocaleDateString()}
+                            {t("expiresOn", { date: new Date(link.expires_at).toLocaleDateString() })}
                           </span>
                         )}
                         {link.allow_download && (
                           <span className="text-2xs text-text-tertiary">
-                            download
+                            {t("downloadBadge")}
                           </span>
                         )}
                       </div>
@@ -353,6 +368,9 @@ interface DirectTabProps {
 }
 
 function DirectTab({ assetId, orgId }: DirectTabProps) {
+  const t = useTranslations("shareDialog");
+  const tc = useTranslations("common");
+  const permissionLabels = usePermissionLabels();
   const [userEmail, setUserEmail] = React.useState("");
   const [userPermission, setUserPermission] =
     React.useState<SharePermission>("view");
@@ -414,7 +432,7 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
       setUserSuccess(true);
       setTimeout(() => setUserSuccess(false), 3000);
     } catch (err) {
-      setUserError(err instanceof Error ? err.message : "Failed to share");
+      setUserError(err instanceof Error ? err.message : t("failedToGenerate"));
     } finally {
       setSharingUser(false);
     }
@@ -439,7 +457,7 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
       setTeamSuccess(true);
       setTimeout(() => setTeamSuccess(false), 3000);
     } catch (err) {
-      setTeamError(err instanceof Error ? err.message : "Failed to share");
+      setTeamError(err instanceof Error ? err.message : t("failedToGenerate"));
     } finally {
       setSharingTeam(false);
     }
@@ -450,7 +468,7 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
       {/* Share with user */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-text-secondary">
-          Share with user
+          {t("shareWithUser")}
         </p>
         <form onSubmit={handleShareUser} className="flex items-end gap-2">
           <div className="flex-1">
@@ -472,19 +490,19 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
             loading={sharingUser}
             disabled={!userEmail.trim()}
           >
-            Share
+            {t("share")}
           </Button>
         </form>
         {userError && <p className="text-xs text-status-error">{userError}</p>}
         {userSuccess && (
-          <p className="text-xs text-status-success">Shared successfully!</p>
+          <p className="text-xs text-status-success">{t("sharedSuccessfully")}</p>
         )}
       </div>
 
       {/* Share with team */}
       <div className="space-y-2">
         <p className="text-xs font-medium text-text-secondary">
-          Share with team
+          {t("shareWithTeam")}
         </p>
         <form onSubmit={handleShareTeam} className="flex items-end gap-2">
           <div className="flex-1">
@@ -494,7 +512,7 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
               disabled={loadingTeams}
               className="flex h-9 w-full rounded-md border border-border bg-bg-secondary px-3 text-sm text-text-primary focus:outline-none focus:border-border-focus disabled:opacity-50"
             >
-              <option value="">Select a team…</option>
+              <option value="">{t("selectTeam")}</option>
               {teams.map((team) => (
                 <option key={team.id} value={team.id}>
                   {team.name}
@@ -512,12 +530,12 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
             loading={sharingTeam}
             disabled={!selectedTeamId}
           >
-            Share
+            {t("share")}
           </Button>
         </form>
         {teamError && <p className="text-xs text-status-error">{teamError}</p>}
         {teamSuccess && (
-          <p className="text-xs text-status-success">Shared with team!</p>
+          <p className="text-xs text-status-success">{t("sharedWithTeam")}</p>
         )}
       </div>
 
@@ -525,12 +543,12 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
       {(loadingShares || shares.length > 0) && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-text-secondary">
-            Current shares
+            {t("currentShares")}
           </p>
           {loadingShares ? (
             <div className="flex items-center gap-2 py-2">
               <Loader2 className="h-4 w-4 animate-spin text-text-tertiary" />
-              <span className="text-xs text-text-tertiary">Loading…</span>
+              <span className="text-xs text-text-tertiary">{tc("loading")}</span>
             </div>
           ) : (
             <div className="space-y-1.5 max-h-40 overflow-y-auto">
@@ -543,12 +561,12 @@ function DirectTab({ assetId, orgId }: DirectTabProps) {
                     <Users className="h-3.5 w-3.5 text-text-tertiary shrink-0" />
                     <span className="text-text-secondary truncate">
                       {share.shared_with_user_id
-                        ? `User ${share.shared_with_user_id.slice(0, 8)}…`
-                        : `Team ${share.shared_with_team_id?.slice(0, 8)}…`}
+                        ? t("userLabel", { id: share.shared_with_user_id.slice(0, 8) })
+                        : t("teamLabel", { id: share.shared_with_team_id?.slice(0, 8) ?? "" })}
                     </span>
                   </div>
                   <span className="text-text-tertiary capitalize shrink-0 ml-2">
-                    {share.permission}
+                    {permissionLabels[share.permission]}
                   </span>
                 </div>
               ))}
@@ -575,6 +593,8 @@ export function ShareDialog({
   projectId,
   asset,
 }: ShareDialogProps) {
+  const t = useTranslations("shareDialog");
+  const tr = useTranslations("review");
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
   const [addingToToken, setAddingToToken] = React.useState<string | null>(null);
@@ -594,8 +614,8 @@ export function ShareDialog({
     () =>
       asset
         ? { type: "asset" as const, id: asset.id, name: asset.name }
-        : { type: "asset" as const, id: assetId, name: assetName || "Asset" },
-    [asset, assetId, assetName],
+        : { type: "asset" as const, id: assetId, name: assetName || tr("assetFallback") },
+    [asset, assetId, assetName, tr],
   );
 
   // Close dropdown on outside click
@@ -667,7 +687,7 @@ export function ShareDialog({
           )}
         >
           <Share2 className="h-4 w-4" />
-          Share
+          {t("share")}
         </Button>
 
         {dropdownOpen && (
@@ -685,7 +705,7 @@ export function ShareDialog({
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                New Share Link
+                {t("newShareLink")}
               </button>
             </div>
 
@@ -693,7 +713,7 @@ export function ShareDialog({
             {projectId && (
               <div className="border-t border-border">
                 <p className="px-3 pt-2.5 pb-1.5 text-xs font-medium text-text-tertiary">
-                  Add to Existing Share Links
+                  {t("addToExistingShareLinks")}
                 </p>
 
                 {/* Search (only if more than 3 links) */}
@@ -705,7 +725,7 @@ export function ShareDialog({
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder={`Search ${shareLinks.length} Share Links`}
+                        placeholder={t("searchShareLinks", { count: shareLinks.length })}
                         className="flex h-8 w-full rounded-md border border-border bg-bg-secondary pl-8 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
                         autoFocus
                       />
@@ -721,7 +741,7 @@ export function ShareDialog({
                     </div>
                   ) : filteredLinks.length === 0 ? (
                     <p className="py-4 text-center text-xs text-text-tertiary">
-                      {search ? "No matching share links" : "No share links yet"}
+                      {search ? t("noMatchingShareLinks") : t("noShareLinksYet")}
                     </p>
                   ) : (
                     filteredLinks.map((link) => {
@@ -755,7 +775,7 @@ export function ShareDialog({
                             </p>
                             {isAdded && (
                               <p className="text-[10px] text-status-success">
-                                Asset added!
+                                {t("assetAdded")}
                               </p>
                             )}
                           </div>

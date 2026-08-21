@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { stubGeometry, restoreGeometry } from '@/test/geometry'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { ImageViewer } from '../image-viewer'
 import { useReviewStore } from '@/stores/review-store'
 
@@ -43,7 +44,7 @@ describe('ImageViewer annotation frame', () => {
       offsetWidth: 100, offsetHeight: 200, offsetLeft: 350, offsetTop: 100,
     })
 
-    render(
+    renderWithI18n(
       <ImageViewer
         asset={asset}
         version={version}
@@ -69,7 +70,7 @@ describe('ImageViewer annotation frame', () => {
       offsetWidth: 100, offsetHeight: 200, offsetLeft: 350, offsetTop: 100,
     })
 
-    const { container } = render(
+    const { container } = renderWithI18n(
       <ImageViewer
         asset={asset}
         version={version}

@@ -1,7 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { stubGeometry, restoreGeometry } from '@/test/geometry'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { NextIntlClientProvider } from 'next-intl'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { useReviewStore } from '@/stores/review-store'
+import enMessages from '../../../../messages/en.json'
 
 const replace = vi.fn()
 // Configurable per test (image tests flip mode / provide stream urls).
@@ -141,7 +144,7 @@ afterEach(() => {
 
 describe('CompareOverlay', () => {
   it('renders exactly the minimalist chrome: two selects, mode toggle (image), close', () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     expect(screen.getByTestId('compare-select-a')).toBeInTheDocument()
@@ -151,7 +154,7 @@ describe('CompareOverlay', () => {
   })
 
   it('shows the asset name, centered in the top bar', () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     expect(screen.getByText('Demo')).toBeInTheDocument()
@@ -159,7 +162,7 @@ describe('CompareOverlay', () => {
 
   it('ESC closes', () => {
     const onClose = vi.fn()
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={onClose} />,
     )
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -168,7 +171,7 @@ describe('CompareOverlay', () => {
 
   it('ignores hotkeys while typing in a comment input', () => {
     const onClose = vi.fn()
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={onClose} />,
     )
     // Right comment panel is open by default — type into its CommentInput textarea.
@@ -179,7 +182,7 @@ describe('CompareOverlay', () => {
   })
 
   it('hides the comment composer for view-only users (canComment=false)', () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} canComment={false} />,
     )
     // Panels still render (comments are readable), but neither side's composer does.
@@ -189,7 +192,7 @@ describe('CompareOverlay', () => {
 
 describe('CompareOverlay per-side comment submission', () => {
   it('right panel submits with the pane-local timecode', async () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     const textarea = screen.getByPlaceholderText('Leave your comment...')
@@ -204,7 +207,7 @@ describe('CompareOverlay per-side comment submission', () => {
   })
 
   it('omits the timecode when the toggle is detached', async () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByTitle('Detach timecode'))
@@ -217,7 +220,7 @@ describe('CompareOverlay per-side comment submission', () => {
   })
 
   it('left panel submits against the left version', async () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByLabelText('Toggle left comments'))
@@ -234,7 +237,7 @@ describe('CompareOverlay per-side comment submission', () => {
 
 describe('CompareOverlay per-side audio toggle', () => {
   it('defaults to B audible / A muted, and exclusive-unmutes on click (A→B mutes, B unmute, mute-audible→both muted)', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     // badgeA = v1 (left, id v-1 per the mocked ?compare=v-1 param), badgeB = v3 (rightVersion = makeVersion(3))
@@ -264,7 +267,7 @@ describe('CompareOverlay per-side audio toggle', () => {
   })
 
   it('re-enforces exclusive mute on the elements after external drift (React muted-prop quirk)', () => {
-    const { container } = render(
+    const { container } = renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     const [videoA, videoB] = Array.from(container.querySelectorAll('video')) as HTMLVideoElement[]
@@ -297,7 +300,7 @@ describe('CompareOverlay marker click', () => {
   it('seeks with the offset, pauses via toggle (not setIsPlaying), focuses the comment, and opens the closed panel', () => {
     commentsByVersion['v-1'] = [makeComment('c1', 'v-1')]
     transportIsPlaying = true
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     // Left panel starts closed — its CommentPanel content isn't rendered yet.
@@ -316,7 +319,7 @@ describe('CompareOverlay marker click', () => {
   it('does not pause when already paused', () => {
     commentsByVersion['v-1'] = [makeComment('c2', 'v-1')]
     transportIsPlaying = false
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByTestId('marker-a-c2'))
@@ -333,7 +336,7 @@ describe('CompareOverlay per-pane annotation display', () => {
     commentsByVersion['v-1'] = [
       makeComment('c1', 'v-1', { annotation: { id: 'ann1', comment_id: 'c1', drawing_data: DRAWING } }),
     ]
-    const { container } = render(
+    const { container } = renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     expect(screen.queryByTestId('annotation-overlay')).not.toBeInTheDocument()
@@ -359,7 +362,7 @@ describe('CompareOverlay per-pane annotation display', () => {
       makeComment('c1', 'v-1', { annotation: { id: 'ann1', comment_id: 'c1', drawing_data: DRAWING } }),
       makeComment('c2', 'v-1', { timecode_start: 10 }),
     ]
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByTestId('marker-a-c1'))
@@ -378,7 +381,7 @@ describe('CompareOverlay per-pane annotation display', () => {
         annotation: { id: 'ann9', comment_id: 'c9', drawing_data: DRAWING },
       }),
     ]
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     // Right panel is open by default — click the comment row (side B).
@@ -408,7 +411,7 @@ describe('CompareOverlay per-pane annotation display', () => {
         annotation: { id: 'ann9', comment_id: 'c9', drawing_data: DRAWING },
       }),
     ]
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByText('Fix the color grade'))
@@ -438,7 +441,7 @@ describe('CompareOverlay per-pane annotation display', () => {
         annotation: { id: 'ann1', comment_id: 'c1', drawing_data: DRAWING },
       }),
     ]
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
 
@@ -477,7 +480,7 @@ describe('CompareOverlay per-pane annotation display', () => {
         annotation: { id: 'ann9', comment_id: 'c9', drawing_data: DRAWING },
       }),
     ]
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByText('Fix the color grade'))
@@ -497,7 +500,7 @@ describe('CompareOverlay per-pane annotation display', () => {
         annotation: { id: 'ann1', comment_id: 'c1', drawing_data: DRAWING },
       }),
     ]
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     // Left panel is closed by default — open it, then click the v1 comment row.
@@ -515,7 +518,7 @@ describe('CompareOverlay per-pane annotation display', () => {
       makeComment('c1', 'v-1', { annotation: { id: 'ann1', comment_id: 'c1', drawing_data: DRAWING } }),
     ]
     transportIsPlaying = false
-    const { rerender } = render(
+    const { rerender } = renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByTestId('marker-a-c1'))
@@ -525,7 +528,9 @@ describe('CompareOverlay per-pane annotation display', () => {
     // an identical element reference would let React bail out of the render.
     transportIsPlaying = true
     rerender(
-      <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />
+      </NextIntlClientProvider>,
     )
     expect(screen.queryByTestId('annotation-overlay')).not.toBeInTheDocument()
   })
@@ -535,7 +540,7 @@ describe('CompareOverlay comment click pause parity', () => {
   it('comment row click while playing seeks pane-local AND pauses via toggle', () => {
     commentsByVersion['v-3'] = [makeComment('c3', 'v-3')]
     transportIsPlaying = true
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     // Right panel is open by default — CommentItem's row click passes pause=true.
@@ -547,7 +552,7 @@ describe('CompareOverlay comment click pause parity', () => {
   it('does not pause when already paused', () => {
     commentsByVersion['v-3'] = [makeComment('c3', 'v-3')]
     transportIsPlaying = false
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByText('Fix the color grade'))
@@ -558,7 +563,7 @@ describe('CompareOverlay comment click pause parity', () => {
 
 describe('CompareOverlay annotation authoring', () => {
   it('video: clicking a pane pencil enters drawing on that pane and mounts a canvas over it', () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     expect(screen.queryByTestId('annotation-canvas')).not.toBeInTheDocument()
@@ -573,7 +578,7 @@ describe('CompareOverlay annotation authoring', () => {
   })
 
   it('video: only one pane draws at a time — clicking the other pane switches sides', () => {
-    render(
+    renderWithI18n(
       <CompareOverlay asset={videoAsset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByLabelText('Toggle left comments')) // open pane A too
@@ -589,7 +594,7 @@ describe('CompareOverlay annotation authoring', () => {
 
   it('image wipe: authoring is disabled (single ambiguous stage) — no pencil', () => {
     streamUrl = 'http://x/img' // wipe renders once both urls resolve
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     expect(screen.queryByTitle('Draw annotation')).not.toBeInTheDocument()
@@ -598,7 +603,7 @@ describe('CompareOverlay annotation authoring', () => {
   it('image side-by-side: authoring is enabled and mounts a canvas over the active pane', () => {
     streamUrl = 'http://x/img'
     searchParamsString = 'compare=v-1&mode=sbs'
-    render(
+    renderWithI18n(
       <CompareOverlay asset={asset} versions={[makeVersion(1), makeVersion(3)]} rightVersion={makeVersion(3)} onClose={vi.fn()} />,
     )
     fireEvent.click(screen.getByTitle('Draw annotation')) // pane B (right panel open)

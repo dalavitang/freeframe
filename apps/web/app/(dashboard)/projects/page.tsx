@@ -14,7 +14,8 @@ import {
   Share2,
   Globe,
 } from "lucide-react";
-import { cn, formatBytes } from "@/lib/utils";
+import { useTranslations, useLocale } from "next-intl";
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { ProjectCard } from "@/components/projects/project-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useFormatters } from "@/hooks/use-formatters";
 import type { Project, ProjectType } from "@/types";
 
 type ViewMode = "grid" | "list";
@@ -39,16 +41,21 @@ function ProjectListRow({
   project: Project;
   showRole?: boolean;
 }) {
+  const t = useTranslations("projectsPage");
+  const tr = useTranslations("roles");
+  const tp = useTranslations("projects");
+  const locale = useLocale();
+  const { formatBytes } = useFormatters();
   const roleName =
     project.role === "owner"
-      ? "Owner"
+      ? tr("owner")
       : project.role === "editor"
-        ? "Editor"
+        ? tr("editor")
         : project.role === "reviewer"
-          ? "Reviewer"
+          ? tr("reviewer")
           : project.role === "viewer"
-            ? "Viewer"
-            : "Member";
+            ? tr("viewer")
+            : t("member");
 
   return (
     <a
@@ -64,8 +71,11 @@ function ProjectListRow({
         </span>
         <span className="text-2xs text-text-tertiary">
           {(project.asset_count ?? 0) > 0
-            ? `${project.asset_count} item${(project.asset_count ?? 0) !== 1 ? "s" : ""} · ${formatBytes(project.storage_bytes ?? 0)}`
-            : "No assets yet"}
+            ? tp("itemCountWithSize", {
+                count: project.asset_count ?? 0,
+                size: formatBytes(project.storage_bytes ?? 0),
+              })
+            : t("noAssetsYet")}
         </span>
       </div>
       <div className="hidden sm:flex items-center gap-1.5 text-xs text-text-tertiary">
@@ -73,7 +83,7 @@ function ProjectListRow({
         {project.member_count ?? 1}
       </div>
       <span className="hidden md:block text-xs text-text-tertiary w-28">
-        {new Date(project.created_at).toLocaleDateString("en-US", {
+        {new Date(project.created_at).toLocaleDateString(locale, {
           month: "short",
           day: "numeric",
           year: "numeric",
@@ -122,6 +132,8 @@ function ProjectSection({
   userId?: string;
   onMutate?: () => void;
 }) {
+  const t = useTranslations("projectsPage");
+
   if (projects.length === 0 && !showNewButton) {
     return null;
   }
@@ -146,10 +158,10 @@ function ProjectSection({
           </div>
           <div className="text-left">
             <p className="text-sm font-medium text-text-primary">
-              Create your first project
+              {t("firstProject")}
             </p>
             <p className="text-xs text-text-tertiary mt-0.5">
-              Organize and review your media assets
+              {t("firstProjectHint")}
             </p>
           </div>
         </button>
@@ -173,7 +185,7 @@ function ProjectSection({
                 <Plus className="h-5 w-5" />
               </div>
               <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors">
-                New Project
+                {t("newProject")}
               </span>
             </button>
           )}
@@ -195,7 +207,9 @@ function ProjectSection({
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-border text-text-tertiary">
                 <Plus className="h-3.5 w-3.5" />
               </div>
-              <span className="text-sm text-text-secondary">New Project</span>
+              <span className="text-sm text-text-secondary">
+                {t("newProject")}
+              </span>
             </button>
           )}
         </div>
@@ -205,7 +219,9 @@ function ProjectSection({
 }
 
 export default function ProjectsPage() {
-  usePageTitle("Projects");
+  const t = useTranslations("projectsPage");
+  const tc = useTranslations("common");
+  usePageTitle(t("title"));
   const router = useRouter();
   const { user } = useAuthStore();
   const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
@@ -251,7 +267,7 @@ export default function ProjectsPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
-      setFormError("Project name is required.");
+      setFormError(t("nameRequired"));
       return;
     }
     setIsCreating(true);
@@ -268,7 +284,7 @@ export default function ProjectsPage() {
       router.push(`/projects/${created.id}`);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to create project";
+        err instanceof Error ? err.message : t("createFailed");
       setFormError(message);
     } finally {
       setIsCreating(false);
@@ -280,10 +296,12 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Projects</h1>
+          <h1 className="text-lg font-semibold text-text-primary">
+            {t("title")}
+          </h1>
           {projects && projects.length > 0 && (
             <p className="mt-0.5 text-sm text-text-tertiary">
-              {projects.length} project{projects.length !== 1 ? "s" : ""}
+              {t("projectCount", { count: projects.length })}
             </p>
           )}
         </div>
@@ -298,7 +316,7 @@ export default function ProjectsPage() {
                   ? "bg-accent-muted text-accent"
                   : "text-text-tertiary hover:bg-bg-hover hover:text-text-secondary",
               )}
-              title="Grid view"
+              title={t("gridView")}
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
@@ -310,7 +328,7 @@ export default function ProjectsPage() {
                   ? "bg-accent-muted text-accent"
                   : "text-text-tertiary hover:bg-bg-hover hover:text-text-secondary",
               )}
-              title="List view"
+              title={t("listView")}
             >
               <List className="h-4 w-4" />
             </button>
@@ -326,7 +344,7 @@ export default function ProjectsPage() {
             <Dialog.Trigger asChild>
               <Button size="sm">
                 <Plus className="h-4 w-4" />
-                New Project
+                {t("newProject")}
               </Button>
             </Dialog.Trigger>
 
@@ -338,16 +356,16 @@ export default function ProjectsPage() {
                 </Dialog.Close>
 
                 <Dialog.Title className="text-base font-semibold text-text-primary">
-                  New Project
+                  {t("createTitle")}
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                  Create a new project to organize your assets.
+                  {t("createDescription")}
                 </Dialog.Description>
 
                 <form onSubmit={handleCreate} className="mt-5 space-y-4">
                   <Input
-                    label="Project name"
-                    placeholder="e.g. Brand Campaign 2025"
+                    label={t("projectName")}
+                    placeholder={t("projectNamePlaceholder")}
                     value={form.name}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, name: e.target.value }))
@@ -357,11 +375,11 @@ export default function ProjectsPage() {
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-sm font-medium text-text-secondary">
-                      Description
+                      {t("description")}
                     </label>
                     <textarea
                       rows={2}
-                      placeholder="Optional description..."
+                      placeholder={t("descriptionPlaceholder")}
                       value={form.description}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, description: e.target.value }))
@@ -377,11 +395,11 @@ export default function ProjectsPage() {
                   <div className="flex justify-end gap-2 pt-2">
                     <Dialog.Close asChild>
                       <Button type="button" variant="secondary" size="sm">
-                        Cancel
+                        {tc("cancel")}
                       </Button>
                     </Dialog.Close>
                     <Button type="submit" size="sm" loading={isCreating}>
-                      Create project
+                      {t("createProject")}
                     </Button>
                   </div>
                 </form>
@@ -410,10 +428,10 @@ export default function ProjectsPage() {
         <div className="rounded-xl border border-border bg-bg-secondary">
           <EmptyState
             icon={FolderOpen}
-            title="No projects yet"
-            description="Create your first project to start organizing assets."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
             action={{
-              label: "New Project",
+              label: t("newProject"),
               onClick: () => setDialogOpen(true),
             }}
           />
@@ -421,11 +439,11 @@ export default function ProjectsPage() {
       ) : (
         <div className="space-y-8">
           <ProjectSection
-            title="My Projects"
+            title={t("myProjects")}
             icon={<FolderOpen className="h-4 w-4 text-text-tertiary" />}
             projects={myProjects}
             viewMode={viewMode}
-            emptyMessage="You haven't created any projects yet."
+            emptyMessage={t("myProjectsEmpty")}
             onNewProject={() => setDialogOpen(true)}
             showNewButton
             userId={user?.id}
@@ -433,7 +451,7 @@ export default function ProjectsPage() {
           />
           {sharedProjects.length > 0 && (
             <ProjectSection
-              title="Shared with Me"
+              title={t("sharedWithMe")}
               icon={<Share2 className="h-4 w-4 text-text-tertiary" />}
               projects={sharedProjects}
               viewMode={viewMode}
@@ -445,7 +463,7 @@ export default function ProjectsPage() {
           )}
           {publicProjects.length > 0 && (
             <ProjectSection
-              title="Public Projects"
+              title={t("publicProjects")}
               icon={<Globe className="h-4 w-4 text-text-tertiary" />}
               projects={publicProjects}
               viewMode={viewMode}

@@ -3,7 +3,9 @@
 import * as React from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { X, Download, MoreHorizontal, Layers, Share2, Trash2, FolderInput, FolderIcon, Check, Film, Music, Image as ImageIcon, Images, Link as LinkIcon, Pencil } from 'lucide-react'
-import { cn, formatRelativeTime, formatBytes } from '@/lib/utils'
+import { useTranslations, useLocale } from 'next-intl'
+import { cn } from '@/lib/utils'
+import { useFormatters } from '@/hooks/use-formatters'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/shared/avatar'
 import { EmptyState } from '@/components/shared/empty-state'
@@ -116,6 +118,11 @@ export function AssetGrid({
   onAssetDelete,
   actions,
 }: AssetGridProps) {
+  const t = useTranslations('projects')
+  const ta = useTranslations('assetCard')
+  const tc = useTranslations('common')
+  const locale = useLocale()
+  const { formatBytes } = useFormatters()
   const [selectedAssetIds, setSelectedAssetIds] = React.useState<Set<string>>(new Set())
   const [selectedFolderIds, setSelectedFolderIds] = React.useState<Set<string>>(new Set())
   const [moveDialogOpen, setMoveDialogOpen] = React.useState(false)
@@ -214,7 +221,7 @@ export function AssetGrid({
       {shareMode && (
         <div className="flex items-center justify-between rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5">
           <span className="text-sm font-medium text-text-primary">
-            Select items to share
+            {t('selectItemsToShare')}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -225,7 +232,7 @@ export function AssetGrid({
                 onShareModeChange?.(false)
               }}
             >
-              Cancel
+              {tc('cancel')}
             </Button>
             <Button
               size="sm"
@@ -236,7 +243,7 @@ export function AssetGrid({
                 onShareModeChange?.(false)
               }}
             >
-              Create Share Link
+              {ta('createShareLink')}
             </Button>
           </div>
         </div>
@@ -268,7 +275,7 @@ export function AssetGrid({
         <>
           <div className="flex items-center gap-2">
             <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">
-              {folders!.length} {folders!.length === 1 ? 'Folder' : 'Folders'}
+              {t('folderCount', { count: folders!.length })}
             </span>
           </div>
           <div className={cn('grid gap-3', gridColsMap[cardSize])}>
@@ -309,7 +316,7 @@ export function AssetGrid({
           {filtered.length > 0 && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">
-                {filtered.length} {filtered.length === 1 ? 'Asset' : 'Assets'}
+                {t('assetCount', { count: filtered.length })}
               </span>
             </div>
           )}
@@ -321,9 +328,9 @@ export function AssetGrid({
         <div className="rounded-lg border border-border bg-bg-secondary">
           <EmptyState
             icon={Layers}
-            title="No assets"
-            description="Upload your first asset to get started."
-            action={onUpload ? { label: 'Upload', onClick: onUpload } : undefined}
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
+            action={onUpload ? { label: t('emptyAction'), onClick: onUpload } : undefined}
           />
         </div>
       ) : layout === 'grid' && filtered.length > 0 ? (
@@ -378,11 +385,11 @@ export function AssetGrid({
           {/* Column headers */}
           <div className="flex items-center gap-4 px-3 py-2 border-b border-border bg-bg-secondary/50 text-[10px] text-text-tertiary font-medium uppercase tracking-wider">
             <div className="h-10 w-10 shrink-0" />
-            <div className="flex-1 min-w-0">Name</div>
-            {showUploader && <div className="hidden md:block w-32">Uploader</div>}
-            {showFileSize && <div className="hidden sm:block w-24 text-right">Size</div>}
-            <div className="hidden md:block w-10 text-center">Ver.</div>
-            <div className="hidden sm:block w-28">Date</div>
+            <div className="flex-1 min-w-0">{tc('name')}</div>
+            {showUploader && <div className="hidden md:block w-32">{t('uploader')}</div>}
+            {showFileSize && <div className="hidden sm:block w-24 text-right">{t('size')}</div>}
+            <div className="hidden md:block w-10 text-center">{t('versionShort')}</div>
+            <div className="hidden sm:block w-28">{t('date')}</div>
             <div className="w-8 shrink-0" />
             <div className="w-8 shrink-0" />
           </div>
@@ -425,7 +432,7 @@ export function AssetGrid({
                 {/* Name */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-text-primary truncate leading-snug">{folder.name}</p>
-                  <p className="text-xs text-text-tertiary mt-0.5">{folder.item_count ?? 0} item{(folder.item_count ?? 0) !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-text-tertiary mt-0.5">{t('itemCount', { count: folder.item_count ?? 0 })}</p>
                 </div>
 
                 {/* Uploader placeholder */}
@@ -439,7 +446,7 @@ export function AssetGrid({
 
                 {/* Date */}
                 <div className="hidden sm:block w-28 text-xs text-text-tertiary shrink-0">
-                  {new Date(folder.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {new Date(folder.created_at).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
 
                 {/* Assignee placeholder — keeps column alignment */}
@@ -469,7 +476,7 @@ export function AssetGrid({
                             className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
                           >
                             <Share2 className="h-3.5 w-3.5 text-text-tertiary" />
-                            Share
+                            {t('share')}
                           </DropdownMenu.Item>
                         )}
                         {onFolderRename && (
@@ -478,7 +485,7 @@ export function AssetGrid({
                             className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
                           >
                             <Pencil className="h-3.5 w-3.5 text-text-tertiary" />
-                            Rename
+                            {tc('rename')}
                           </DropdownMenu.Item>
                         )}
                         {onFolderDelete && (
@@ -487,7 +494,7 @@ export function AssetGrid({
                             className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-status-error hover:bg-status-error/10 cursor-pointer outline-none transition-colors"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Delete
+                            {tc('delete')}
                           </DropdownMenu.Item>
                         )}
                       </DropdownMenu.Content>
@@ -562,7 +569,7 @@ export function AssetGrid({
                 </div>
                 {/* Date */}
                 <div className="hidden sm:block w-28 text-xs text-text-tertiary shrink-0">
-                  {new Date(asset.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {new Date(asset.created_at).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
                 {/* Assignee */}
                 <div className="w-8 shrink-0 flex justify-center">
@@ -591,7 +598,7 @@ export function AssetGrid({
                           className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
                         >
                           <Share2 className="h-3.5 w-3.5 text-text-tertiary" />
-                          Create Share Link
+                          {ta('createShareLink')}
                         </DropdownMenu.Item>
                         <DropdownMenu.Separator className="my-1 h-px bg-border mx-1" />
                         <DropdownMenu.Item
@@ -599,7 +606,7 @@ export function AssetGrid({
                           className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
                         >
                           <Download className="h-3.5 w-3.5 text-text-tertiary" />
-                          Download
+                          {ta('download')}
                         </DropdownMenu.Item>
                         <DropdownMenu.Item
                           onSelect={() => {
@@ -609,7 +616,7 @@ export function AssetGrid({
                           className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
                         >
                           <LinkIcon className="h-3.5 w-3.5 text-text-tertiary" />
-                          Copy Asset URL
+                          {ta('copyAssetUrl')}
                         </DropdownMenu.Item>
                         <DropdownMenu.Separator className="my-1 h-px bg-border mx-1" />
                         <DropdownMenu.Item
@@ -617,14 +624,14 @@ export function AssetGrid({
                           className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
                         >
                           <Pencil className="h-3.5 w-3.5 text-text-tertiary" />
-                          Rename
+                          {tc('rename')}
                         </DropdownMenu.Item>
                         <DropdownMenu.Item
                           onSelect={() => onAssetDelete?.(asset)}
                           className="flex items-center gap-2.5 mx-1 px-2.5 py-2 rounded-lg text-sm text-status-error hover:bg-status-error/10 cursor-pointer outline-none transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                          Delete
+                          {tc('delete')}
                         </DropdownMenu.Item>
                       </DropdownMenu.Content>
                     </DropdownMenu.Portal>
@@ -643,7 +650,7 @@ export function AssetGrid({
             <X className="h-4 w-4" />
           </button>
           <span className="text-sm text-text-primary font-medium">
-            {totalSelected} Item{totalSelected !== 1 ? 's' : ''} selected
+            {t('selectedCount', { count: totalSelected })}
           </span>
           {selectedTotalSize > 0 && (
             <span className="text-xs text-text-tertiary">
@@ -657,11 +664,11 @@ export function AssetGrid({
             className="gap-1.5"
             onClick={() => onBulkDelete?.(Array.from(selectedAssetIds), Array.from(selectedFolderIds))}
           >
-            <Trash2 className="h-4 w-4" /> Delete
+            <Trash2 className="h-4 w-4" /> {tc('delete')}
           </Button>
           {onBulkMove && (
             <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => setMoveDialogOpen(true)}>
-              <FolderInput className="h-4 w-4" /> Move to
+              <FolderInput className="h-4 w-4" /> {t('moveTo')}
             </Button>
           )}
           {onCreateShareLink && (
@@ -674,7 +681,7 @@ export function AssetGrid({
                 clearSelection()
               }}
             >
-              <Share2 className="h-4 w-4" /> Share
+              <Share2 className="h-4 w-4" /> {t('share')}
             </Button>
           )}
           {(selectedAssetIds.size > 0 || selectedFolderIds.size > 0) && (
@@ -684,7 +691,7 @@ export function AssetGrid({
               className="gap-1.5"
               onClick={() => onBulkDownload?.(Array.from(selectedAssetIds), Array.from(selectedFolderIds))}
             >
-              <Download className="h-4 w-4" /> Download
+              <Download className="h-4 w-4" /> {ta('download')}
             </Button>
           )}
         </div>

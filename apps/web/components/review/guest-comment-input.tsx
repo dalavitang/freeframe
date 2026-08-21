@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { Send, User, X, Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -42,6 +43,7 @@ interface IdentityFormProps {
 }
 
 function IdentityForm({ onIdentified }: IdentityFormProps) {
+  const t = useTranslations('comments')
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
@@ -49,11 +51,11 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim() || !email.trim()) {
-      setError('Both name and email are required.')
+      setError(t('bothNameEmailRequired'))
       return
     }
     if (!/\S+@\S+\.\S+/.test(email.trim())) {
-      setError('Please enter a valid email address.')
+      setError(t('validEmail'))
       return
     }
     const identity: GuestIdentity = { name: name.trim(), email: email.trim() }
@@ -67,10 +69,10 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-muted">
           <User className="h-3.5 w-3.5 text-accent" />
         </div>
-        <p className="text-sm font-medium text-text-primary">Who are you?</p>
+        <p className="text-sm font-medium text-text-primary">{t('guestIdentityTitle')}</p>
       </div>
       <p className="mb-3 text-xs text-text-tertiary">
-        Enter your name and email to leave a comment. No account required.
+        {t('guestIdentityDescription')}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-2">
@@ -78,7 +80,7 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
+          placeholder={t('yourName')}
           required
           className="flex h-9 w-full rounded-md border border-border bg-bg-secondary px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-border-focus"
         />
@@ -86,7 +88,7 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="your@email.com"
+          placeholder={t('yourEmailPlaceholder')}
           required
           className="flex h-9 w-full rounded-md border border-border bg-bg-secondary px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-border-focus"
         />
@@ -94,7 +96,7 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
         {error && <p className="text-xs text-status-error">{error}</p>}
 
         <Button type="submit" size="sm" className="w-full">
-          Continue to comment
+          {t('continueToComment')}
         </Button>
       </form>
     </div>
@@ -112,6 +114,7 @@ interface GuestCommentInputProps {
 }
 
 export function GuestCommentInput({ token, onCommentPosted, className }: GuestCommentInputProps) {
+  const t = useTranslations('comments')
   const [identity, setIdentity] = React.useState<GuestIdentity | null>(null)
   const [body, setBody] = React.useState('')
   const [submitting, setSubmitting] = React.useState(false)
@@ -166,7 +169,7 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
       setTimeout(() => setSuccess(false), 3000)
       onCommentPosted?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to post comment')
+      setError(err instanceof Error ? err.message : t('failedToPost'))
     } finally {
       setSubmitting(false)
     }
@@ -186,7 +189,12 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
             {identity.name.charAt(0).toUpperCase()}
           </div>
           <span>
-            Commenting as <span className="font-medium text-text-primary">{identity.name}</span>
+            {t.rich('commentingAs', {
+              name: identity.name,
+              highlight: (chunks) => (
+                <span className="font-medium text-text-primary">{chunks}</span>
+              ),
+            })}
           </span>
         </div>
         <button
@@ -195,17 +203,17 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
             setIdentity(null)
           }}
           className="text-2xs text-text-tertiary hover:text-text-secondary transition-colors flex items-center gap-0.5"
-          title="Change identity"
+          title={t('changeIdentity')}
         >
           <X className="h-3 w-3" />
-          Change
+          {t('change')}
         </button>
       </div>
 
       {/* Textarea */}
       <textarea
         className="w-full resize-none rounded-md border border-border bg-bg-secondary px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-border-focus focus:ring-1 focus:ring-border-focus min-h-[72px]"
-        placeholder="Leave a comment… (⌘+Enter to submit)"
+        placeholder={t('guestPlaceholder')}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -215,7 +223,7 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
 
       {/* Error / success */}
       {error && <p className="mt-1 text-xs text-status-error">{error}</p>}
-      {success && <p className="mt-1 text-xs text-status-success">Comment posted!</p>}
+      {success && <p className="mt-1 text-xs text-status-success">{t('commentPosted')}</p>}
 
       {/* Submit */}
       <div className="mt-2 flex items-center justify-end">
@@ -231,7 +239,7 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
           ) : (
             <Send className="h-4 w-4" />
           )}
-          Comment
+          {t('comment')}
         </Button>
       </div>
     </div>

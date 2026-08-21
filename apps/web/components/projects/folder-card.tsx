@@ -3,6 +3,7 @@
 import React, { useCallback, useState } from 'react'
 import useSWR from 'swr'
 import { Folder, Film, Music, Image as ImageIcon, Images, MoreHorizontal, Pencil, Trash, Share2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { NameDialog } from './name-dialog'
@@ -100,6 +101,9 @@ export function FolderCard({
   onDropItems,
   className,
 }: FolderCardProps) {
+  const t = useTranslations('folderCard')
+  const tp = useTranslations('projects')
+  const tc = useTranslations('common')
   const [menuOpen, setMenuOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
@@ -197,7 +201,7 @@ export function FolderCard({
                       setRenameOpen(true)
                     }}
                   >
-                    <Pencil className="h-3 w-3" /> Rename
+                    <Pencil className="h-3 w-3" /> {tc('rename')}
                   </button>
                   <button
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-hover"
@@ -207,7 +211,7 @@ export function FolderCard({
                       onShare?.(folder.id, folder.name)
                     }}
                   >
-                    <Share2 className="h-3 w-3" /> Share
+                    <Share2 className="h-3 w-3" /> {tp('share')}
                   </button>
                   <button
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10"
@@ -217,14 +221,14 @@ export function FolderCard({
                       setDeleteOpen(true)
                     }}
                   >
-                    <Trash className="h-3 w-3" /> Delete
+                    <Trash className="h-3 w-3" /> {tc('delete')}
                   </button>
                 </div>
               )}
             </div>
           </div>
           <p className="text-xs text-text-tertiary mt-0.5">
-            {folder.item_count} {folder.item_count === 1 ? 'Item' : 'Items'}
+            {t('itemCount', { count: folder.item_count })}
           </p>
         </div>
       </div>
@@ -233,10 +237,10 @@ export function FolderCard({
       <NameDialog
         open={renameOpen}
         onOpenChange={setRenameOpen}
-        title="Rename Folder"
-        placeholder="Folder name"
+        title={t('renameTitle')}
+        placeholder={t('namePlaceholder')}
         defaultValue={folder.name}
-        submitLabel="Rename"
+        submitLabel={tc('rename')}
         onSubmit={(name) => onRename?.(folder.id, name)}
       />
 
@@ -244,9 +248,9 @@ export function FolderCard({
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title={`Delete "${folder.name}"?`}
-        description="This folder and all its contents will be moved to trash. You can restore them later."
-        confirmLabel="Delete"
+        title={t('deleteTitle', { name: folder.name })}
+        description={t('deleteDescription')}
+        confirmLabel={tc('delete')}
         variant="danger"
         onConfirm={() => onDelete?.(folder.id)}
       />

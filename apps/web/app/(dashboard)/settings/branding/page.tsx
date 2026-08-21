@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { Palette, Upload, X, Check, RotateCcw, Moon, Sun } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/stores/auth-store'
 import { useBrandingStore } from '@/stores/branding-store'
 import { useThemeStore } from '@/stores/theme-store'
@@ -23,6 +24,9 @@ function LogoUploadSlot({
   onRemove: () => void
   previewBg: string
 }) {
+  const t = useTranslations('branding')
+  const tc = useTranslations('common')
+  const tl = useTranslations('layout')
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -47,7 +51,7 @@ function LogoUploadSlot({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={logoUrl} alt={label} className="h-full w-full object-contain p-1" />
         ) : (
-          <span className="text-xs text-text-tertiary text-center leading-tight px-1">No logo</span>
+          <span className="text-xs text-text-tertiary text-center leading-tight px-1">{t('noLogo')}</span>
         )}
       </div>
 
@@ -65,7 +69,7 @@ function LogoUploadSlot({
           />
           <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-3.5 w-3.5" />
-            {logoUrl ? 'Replace' : 'Upload'}
+            {logoUrl ? t('replace') : tl('upload')}
           </Button>
           {logoUrl && (
             <Button
@@ -75,17 +79,19 @@ function LogoUploadSlot({
               className="text-status-error hover:text-status-error hover:bg-status-error/10"
             >
               <X className="h-3.5 w-3.5" />
-              Remove
+              {tc('remove')}
             </Button>
           )}
         </div>
-        <p className="text-2xs text-text-tertiary mt-2">PNG, JPG, SVG or WebP · Max 2 MB</p>
+        <p className="text-2xs text-text-tertiary mt-2">{t('fileTypesHint')}</p>
       </div>
     </div>
   )
 }
 
 export default function BrandingPage() {
+  const t = useTranslations('branding')
+  const tc = useTranslations('common')
   const { user } = useAuthStore()
   const { orgName, orgLogoDark, orgLogoLight, setOrgName, setOrgLogoDark, setOrgLogoLight, resetAll } = useBrandingStore()
   const { theme } = useThemeStore()
@@ -116,21 +122,21 @@ export default function BrandingPage() {
           <Palette className="h-5 w-5 text-accent" />
         </div>
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Branding</h1>
-          <p className="text-sm text-text-secondary">Customize your workspace name and logo</p>
+          <h1 className="text-lg font-semibold text-text-primary">{t('title')}</h1>
+          <p className="text-sm text-text-secondary">{t('subtitle')}</p>
         </div>
       </div>
 
       {/* Workspace name */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-text-primary">Workspace name</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t('workspaceName')}</h2>
         <div className="p-4 rounded-lg border border-border bg-bg-secondary space-y-3">
           {isAdmin ? (
             <div className="flex items-center gap-2">
               <Input
                 value={nameValue}
                 onChange={(e) => setNameValue(e.target.value)}
-                placeholder="e.g. Acme Studio"
+                placeholder={t('workspaceNamePlaceholder')}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
                 className="max-w-xs"
               />
@@ -139,33 +145,33 @@ export default function BrandingPage() {
                 onClick={handleSaveName}
                 disabled={!nameValue.trim() || nameValue.trim() === orgName}
               >
-                {nameSaved ? <Check className="h-3.5 w-3.5" /> : 'Save'}
+                {nameSaved ? <Check className="h-3.5 w-3.5" /> : tc('save')}
               </Button>
             </div>
           ) : (
             <p className="text-sm text-text-secondary">{orgName}</p>
           )}
           <p className="text-xs text-text-tertiary">
-            Shown in the sidebar. Defaults to &ldquo;FreeFrame&rdquo;.
+            {t('workspaceNameHint')}
           </p>
         </div>
       </section>
 
       {/* Logo — per theme */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-text-primary">Logo</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t('logo')}</h2>
         <p className="text-xs text-text-tertiary -mt-1">
-          Upload separate logos for dark and light themes. If only one is set, it will be used for both.
+          {t('logoHint')}
         </p>
 
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-1">
             <Moon className="h-3.5 w-3.5 text-text-tertiary" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">Dark theme</span>
+            <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">{t('darkTheme')}</span>
           </div>
           <LogoUploadSlot
-            label="Dark theme logo"
-            description="Shown when the app is in dark mode. Use a light-colored logo."
+            label={t('darkThemeLogo')}
+            description={t('darkThemeLogoDesc')}
             logoUrl={orgLogoDark}
             onUpload={isAdmin ? setOrgLogoDark : () => {}}
             onRemove={isAdmin ? () => setOrgLogoDark(null) : () => {}}
@@ -174,11 +180,11 @@ export default function BrandingPage() {
 
           <div className="flex items-center gap-2 mt-4 mb-1">
             <Sun className="h-3.5 w-3.5 text-text-tertiary" />
-            <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">Light theme</span>
+            <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">{t('lightTheme')}</span>
           </div>
           <LogoUploadSlot
-            label="Light theme logo"
-            description="Shown when the app is in light mode. Use a dark-colored logo."
+            label={t('lightThemeLogo')}
+            description={t('lightThemeLogoDesc')}
             logoUrl={orgLogoLight}
             onUpload={isAdmin ? setOrgLogoLight : () => {}}
             onRemove={isAdmin ? () => setOrgLogoLight(null) : () => {}}
@@ -189,9 +195,9 @@ export default function BrandingPage() {
 
       {/* Live preview */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-text-primary">Preview</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t('preview')}</h2>
         <p className="text-xs text-text-tertiary -mt-1">
-          Currently showing the <strong>{theme === 'light' ? 'light' : 'dark'}</strong> theme logo.
+          {t('previewThemeHint', { theme: theme === 'light' ? t('themeLight') : t('themeDark') })}
         </p>
         <div className="rounded-lg border border-border bg-bg-secondary p-4 flex items-center gap-2.5">
           <div className="h-7 w-7 rounded-md overflow-hidden flex items-center justify-center bg-bg-tertiary shrink-0">
@@ -221,13 +227,13 @@ export default function BrandingPage() {
             onClick={() => { resetAll(); setNameValue('FreeFrame') }}
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            Reset to defaults
+            {t('resetToDefaults')}
           </Button>
         </section>
       )}
 
       {!isAdmin && (
-        <p className="text-xs text-text-tertiary">Only super admins can edit branding settings.</p>
+        <p className="text-xs text-text-tertiary">{t('adminOnlyHint')}</p>
       )}
     </div>
   )

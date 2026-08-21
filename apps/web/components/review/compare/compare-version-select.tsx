@@ -2,8 +2,9 @@
 
 import * as React from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
-import { versionStatusConfig } from '@/components/review/version-switcher'
+import { versionStatusConfig, useVersionStatusLabels } from '@/components/review/version-switcher'
 import type { AssetVersion } from '@/types'
 
 interface CompareVersionSelectProps {
@@ -19,6 +20,8 @@ interface CompareVersionSelectProps {
 
 /** Controlled version dropdown for the compare overlay — never touches the review store. */
 export function CompareVersionSelect({ versions, value, onChange, accentClass, excludeId, testId }: CompareVersionSelectProps) {
+  const t = useTranslations('compare')
+  const statusLabels = useVersionStatusLabels()
   const [open, setOpen] = React.useState(false)
   const rootRef = React.useRef<HTMLDivElement>(null)
   const sorted = React.useMemo(
@@ -68,7 +71,7 @@ export function CompareVersionSelect({ versions, value, onChange, accentClass, e
                 role="option"
                 aria-selected={v.id === value}
                 disabled={blocked}
-                title={onOtherSide ? 'Shown on the other side' : undefined}
+                title={onOtherSide ? t('shownOnOtherSide') : undefined}
                 onClick={() => {
                   if (blocked) return
                   onChange(v)
@@ -82,14 +85,14 @@ export function CompareVersionSelect({ versions, value, onChange, accentClass, e
               >
                 <span>v{v.version_number}</span>
                 {onOtherSide ? (
-                  <span className="text-[11px] text-text-tertiary">in use</span>
+                  <span className="text-[11px] text-text-tertiary">{t('inUse')}</span>
                 ) : status && !ready ? (
                   <span
                     className={cn('inline-flex items-center gap-1 text-[11px]', status.className)}
-                    title={status.label}
+                    title={statusLabels[status.labelKey]}
                   >
                     {status.icon}
-                    {status.label}
+                    {statusLabels[status.labelKey]}
                   </span>
                 ) : null}
               </button>

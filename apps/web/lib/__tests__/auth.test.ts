@@ -1,10 +1,25 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { setTokens, getAccessToken, getRefreshToken, clearTokens } from '../auth'
 
 describe('Token management', () => {
   beforeEach(() => {
+    // Node 26 exposes no localStorage unless a storage file is provided (CI runs
+    // Node 20 where jsdom provides it); stub a working in-memory store instead.
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => { store.set(k, v) },
+      removeItem: (k: string) => { store.delete(k) },
+      clear: () => { store.clear() },
+      key: (i: number) => Array.from(store.keys())[i] ?? null,
+      get length() { return store.size },
+    })
     localStorage.clear()
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('setTokens stores access and refresh tokens in localStorage', () => {

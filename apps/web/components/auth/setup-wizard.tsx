@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { api, ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,31 +22,32 @@ interface FormErrors {
   general?: string
 }
 
-function validate(form: FormState): FormErrors {
+function validate(form: FormState, t: ReturnType<typeof useTranslations<'auth.setup'>>): FormErrors {
   const errors: FormErrors = {}
   if (!form.email) {
-    errors.email = 'Email is required'
+    errors.email = t('emailRequired')
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Enter a valid email address'
+    errors.email = t('invalidEmail')
   }
   if (!form.name.trim()) {
-    errors.name = 'Name is required'
+    errors.name = t('nameRequired')
   }
   if (!form.password) {
-    errors.password = 'Password is required'
+    errors.password = t('passwordRequired')
   } else if (form.password.length < 8) {
-    errors.password = 'Password must be at least 8 characters'
+    errors.password = t('passwordTooShort')
   }
   if (!form.confirmPassword) {
-    errors.confirmPassword = 'Please confirm your password'
+    errors.confirmPassword = t('confirmPasswordRequired')
   } else if (form.password !== form.confirmPassword) {
-    errors.confirmPassword = 'Passwords do not match'
+    errors.confirmPassword = t('passwordsMismatch')
   }
   return errors
 }
 
 export function SetupWizard() {
   const router = useRouter()
+  const t = useTranslations('auth.setup')
   const [form, setForm] = useState<FormState>({
     email: '',
     name: '',
@@ -68,7 +70,7 @@ export function SetupWizard() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const validation = validate(form)
+    const validation = validate(form, t)
     if (Object.keys(validation).length > 0) {
       setErrors(validation)
       return
@@ -90,7 +92,7 @@ export function SetupWizard() {
       if (err instanceof ApiError) {
         setErrors({ general: err.detail })
       } else {
-        setErrors({ general: 'Something went wrong. Please try again.' })
+        setErrors({ general: t('somethingWentWrong') })
       }
     } finally {
       setLoading(false)
@@ -105,8 +107,8 @@ export function SetupWizard() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-text-primary mb-1">Admin account created</h2>
-        <p className="text-sm text-text-secondary">Redirecting you to login…</p>
+        <h2 className="text-lg font-semibold text-text-primary mb-1">{t('successTitle')}</h2>
+        <p className="text-sm text-text-secondary">{t('successDescription')}</p>
       </div>
     )
   }
@@ -114,9 +116,9 @@ export function SetupWizard() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-xl font-semibold text-text-primary mb-1">Welcome to FreeFrame</h1>
+        <h1 className="text-xl font-semibold text-text-primary mb-1">{t('welcomeTitle')}</h1>
         <p className="text-sm text-text-secondary">
-          Create the super admin account to get started. This can only be done once.
+          {t('welcomeDescription')}
         </p>
       </div>
 
@@ -128,9 +130,9 @@ export function SetupWizard() {
         )}
 
         <Input
-          label="Full name"
+          label={t('nameLabel')}
           type="text"
-          placeholder="Alex Johnson"
+          placeholder={t('namePlaceholder')}
           autoComplete="name"
           value={form.name}
           onChange={handleChange('name')}
@@ -138,9 +140,9 @@ export function SetupWizard() {
         />
 
         <Input
-          label="Email address"
+          label={t('emailLabel')}
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('emailPlaceholder')}
           autoComplete="email"
           value={form.email}
           onChange={handleChange('email')}
@@ -148,9 +150,9 @@ export function SetupWizard() {
         />
 
         <Input
-          label="Password"
+          label={t('passwordLabel')}
           type="password"
-          placeholder="Min. 8 characters"
+          placeholder={t('passwordMinPlaceholder')}
           autoComplete="new-password"
           value={form.password}
           onChange={handleChange('password')}
@@ -158,9 +160,9 @@ export function SetupWizard() {
         />
 
         <Input
-          label="Confirm password"
+          label={t('confirmPasswordLabel')}
           type="password"
-          placeholder="Repeat password"
+          placeholder={t('confirmPasswordPlaceholder')}
           autoComplete="new-password"
           value={form.confirmPassword}
           onChange={handleChange('confirmPassword')}
@@ -173,7 +175,7 @@ export function SetupWizard() {
           loading={loading}
           className="mt-2 w-full"
         >
-          Create admin account
+          {t('createButton')}
         </Button>
       </form>
     </div>

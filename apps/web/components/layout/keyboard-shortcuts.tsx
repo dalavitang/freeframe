@@ -3,6 +3,7 @@
 import * as React from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Keyboard, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -16,49 +17,6 @@ interface ShortcutGroup {
   title: string
   items: ShortcutItem[]
 }
-
-// ─── Shortcut definitions ─────────────────────────────────────────────────────
-
-const SHORTCUT_GROUPS: ShortcutGroup[] = [
-  {
-    title: 'Navigation',
-    items: [
-      { keys: ['⌘', 'K'], label: 'Open command palette / search' },
-      { keys: ['?'], label: 'Show keyboard shortcuts' },
-      { keys: ['⌘', '/'], label: 'Toggle sidebar' },
-    ],
-  },
-  {
-    title: 'Review',
-    items: [
-      { keys: ['Space'], label: 'Play / pause video or audio' },
-      { keys: ['←'], label: 'Seek back 5 seconds' },
-      { keys: ['→'], label: 'Seek forward 5 seconds' },
-      { keys: ['J'], label: 'Jump back 10 seconds' },
-      { keys: ['K'], label: 'Play / pause' },
-      { keys: ['L'], label: 'Jump forward 10 seconds' },
-      { keys: ['M'], label: 'Mute / unmute' },
-      { keys: ['F'], label: 'Toggle fullscreen' },
-    ],
-  },
-  {
-    title: 'Actions',
-    items: [
-      { keys: ['N', 'P'], label: 'New project' },
-      { keys: ['N', 'A'], label: 'Upload asset' },
-      { keys: ['G', 'H'], label: 'Go to home' },
-      { keys: ['G', 'P'], label: 'Go to projects' },
-      { keys: ['G', 'A'], label: 'Go to assets' },
-    ],
-  },
-  {
-    title: 'Comments',
-    items: [
-      { keys: ['C'], label: 'Focus comment input' },
-      { keys: ['Esc'], label: 'Cancel comment / close panel' },
-    ],
-  },
-]
 
 // ─── Key badge component ──────────────────────────────────────────────────────
 
@@ -85,7 +43,50 @@ export function KeyboardShortcuts({
   onOpenChange,
   standalone = false,
 }: KeyboardShortcutsProps) {
+  const t = useTranslations('keyboardShortcuts')
+  const common = useTranslations('common')
   const [internalOpen, setInternalOpen] = React.useState(false)
+
+  const SHORTCUT_GROUPS: ShortcutGroup[] = [
+    {
+      title: t('groupNavigation'),
+      items: [
+        { keys: ['⌘', 'K'], label: t('openCommandPalette') },
+        { keys: ['?'], label: t('showShortcuts') },
+        { keys: ['⌘', '/'], label: t('toggleSidebar') },
+      ],
+    },
+    {
+      title: t('groupReview'),
+      items: [
+        { keys: ['Space'], label: t('playPauseMedia') },
+        { keys: ['←'], label: t('seekBack5') },
+        { keys: ['→'], label: t('seekForward5') },
+        { keys: ['J'], label: t('jumpBack10') },
+        { keys: ['K'], label: t('playPause') },
+        { keys: ['L'], label: t('jumpForward10') },
+        { keys: ['M'], label: t('mute') },
+        { keys: ['F'], label: t('toggleFullscreen') },
+      ],
+    },
+    {
+      title: t('groupActions'),
+      items: [
+        { keys: ['N', 'P'], label: t('newProject') },
+        { keys: ['N', 'A'], label: t('uploadAsset') },
+        { keys: ['G', 'H'], label: t('goHome') },
+        { keys: ['G', 'P'], label: t('goProjects') },
+        { keys: ['G', 'A'], label: t('goAssets') },
+      ],
+    },
+    {
+      title: t('groupComments'),
+      items: [
+        { keys: ['C'], label: t('focusCommentInput') },
+        { keys: ['Esc'], label: t('cancelComment') },
+      ],
+    },
+  ]
 
   const isOpen = standalone ? internalOpen : (controlledOpen ?? false)
   const setOpen = standalone
@@ -132,13 +133,13 @@ export function KeyboardShortcuts({
             <div className="flex items-center gap-2">
               <Keyboard className="h-5 w-5 text-text-tertiary" />
               <Dialog.Title className="text-base font-semibold text-text-primary">
-                Keyboard Shortcuts
+                {t('title')}
               </Dialog.Title>
             </div>
             <Dialog.Close asChild>
               <button className="rounded-md p-1 text-text-tertiary transition-colors hover:bg-bg-hover hover:text-text-primary">
                 <X className="h-4 w-4" />
-                <span className="sr-only">Close</span>
+                <span className="sr-only">{common('close')}</span>
               </button>
             </Dialog.Close>
           </div>
@@ -176,11 +177,13 @@ export function KeyboardShortcuts({
           {/* Footer hint */}
           <div className="border-t border-border px-6 py-3">
             <p className="text-2xs text-text-tertiary">
-              Press{' '}
-              <kbd className="rounded border border-border px-1 py-0.5 font-mono text-2xs">
-                ?
-              </kbd>{' '}
-              anytime to toggle this panel
+              {t.rich('footerHint', {
+                kbd: (chunks) => (
+                  <kbd className="rounded border border-border px-1 py-0.5 font-mono text-2xs">
+                    {chunks}
+                  </kbd>
+                ),
+              })}
             </p>
           </div>
         </Dialog.Content>

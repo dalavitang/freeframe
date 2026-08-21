@@ -18,6 +18,7 @@ import {
   X,
   Upload,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
@@ -79,6 +80,11 @@ function SimpleSelect<T extends string>({
 // ─── Branding Tab ─────────────────────────────────────────────────────────────
 
 function BrandingTab({ projectId }: { projectId: string }) {
+  const t = useTranslations('projectSettings')
+  const tc = useTranslations('common')
+  const tam = useTranslations('assetMetadata')
+  const tl = useTranslations('layout')
+  const ta = useTranslations('appearance')
   const key = `/projects/${projectId}/branding`
   const { data: branding } = useSWR<ProjectBranding>(key, () =>
     api.get<ProjectBranding>(key),
@@ -111,10 +117,10 @@ function BrandingTab({ projectId }: { projectId: string }) {
         viewer_layout: form.viewer_layout,
         featured_field: form.featured_field,
       })
-      setMsg('Branding saved.')
+      setMsg(t('brandingSaved'))
       globalMutate(key)
     } catch (err: unknown) {
-      setMsg(err instanceof Error ? err.message : 'Failed to save')
+      setMsg(err instanceof Error ? err.message : tam('saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -139,7 +145,7 @@ function BrandingTab({ projectId }: { projectId: string }) {
       setLogoFile(null)
       globalMutate(key)
     } catch {
-      setMsg('Logo upload failed.')
+      setMsg(t('logoUploadFailed'))
     } finally {
       setUploadingLogo(false)
     }
@@ -149,11 +155,11 @@ function BrandingTab({ projectId }: { projectId: string }) {
     <form onSubmit={handleSave} className="space-y-5">
       {/* Logo */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium text-text-secondary">Logo</label>
+        <label className="text-sm font-medium text-text-secondary">{t('logo')}</label>
         <div className="flex items-center gap-3">
           {branding?.logo_s3_key && (
             <div className="h-12 w-12 rounded-lg border border-border bg-bg-tertiary overflow-hidden flex items-center justify-center text-text-tertiary text-xs">
-              Logo
+              {t('logo')}
             </div>
           )}
           <input
@@ -170,7 +176,7 @@ function BrandingTab({ projectId }: { projectId: string }) {
             onClick={() => logoInputRef.current?.click()}
           >
             <Upload className="h-4 w-4" />
-            {logoFile ? logoFile.name : 'Choose file'}
+            {logoFile ? logoFile.name : t('chooseFile')}
           </Button>
           {logoFile && (
             <Button
@@ -179,7 +185,7 @@ function BrandingTab({ projectId }: { projectId: string }) {
               onClick={handleLogoUpload}
               loading={uploadingLogo}
             >
-              Upload
+              {tl('upload')}
             </Button>
           )}
         </div>
@@ -188,7 +194,7 @@ function BrandingTab({ projectId }: { projectId: string }) {
       {/* Colors */}
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-secondary">Primary color</label>
+          <label className="text-sm font-medium text-text-secondary">{t('primaryColor')}</label>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -205,7 +211,7 @@ function BrandingTab({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-text-secondary">Secondary color</label>
+          <label className="text-sm font-medium text-text-secondary">{t('secondaryColor')}</label>
           <div className="flex items-center gap-2">
             <input
               type="color"
@@ -224,30 +230,30 @@ function BrandingTab({ projectId }: { projectId: string }) {
       </div>
 
       <Input
-        label="Custom title"
+        label={t('customTitle')}
         value={form.custom_title ?? ''}
         onChange={(e) => set('custom_title', e.target.value)}
-        placeholder="My Project Hub"
+        placeholder={t('customTitlePlaceholder')}
       />
       <Input
-        label="Custom footer"
+        label={t('customFooter')}
         value={form.custom_footer ?? ''}
         onChange={(e) => set('custom_footer', e.target.value)}
-        placeholder="Confidential — do not distribute"
+        placeholder={t('customFooterPlaceholder')}
       />
       <Input
-        label="Featured field"
+        label={t('featuredField')}
         value={form.featured_field ?? ''}
         onChange={(e) => set('featured_field', e.target.value)}
-        placeholder="Custom metadata field name"
+        placeholder={t('featuredFieldPlaceholder')}
       />
 
       <SimpleSelect<ViewerLayout>
-        label="Viewer layout"
+        label={t('viewerLayout')}
         value={form.viewer_layout ?? 'grid'}
         options={[
-          { value: 'grid', label: 'Grid' },
-          { value: 'reel', label: 'Reel' },
+          { value: 'grid', label: ta('grid') },
+          { value: 'reel', label: t('layoutReel') },
         ]}
         onChange={(v) => set('viewer_layout', v)}
       />
@@ -256,7 +262,7 @@ function BrandingTab({ projectId }: { projectId: string }) {
 
       <div className="flex justify-end">
         <Button type="submit" size="sm" loading={saving}>
-          Save branding
+          {t('saveBranding')}
         </Button>
       </div>
     </form>
@@ -266,6 +272,8 @@ function BrandingTab({ projectId }: { projectId: string }) {
 // ─── Watermark Tab ────────────────────────────────────────────────────────────
 
 function WatermarkTab({ projectId }: { projectId: string }) {
+  const t = useTranslations('projectSettings')
+  const tam = useTranslations('assetMetadata')
   const key = `/projects/${projectId}/watermark`
   const { data: wm } = useSWR<WatermarkSettings>(key, () =>
     api.get<WatermarkSettings>(key),
@@ -299,10 +307,10 @@ function WatermarkTab({ projectId }: { projectId: string }) {
         custom_text: form.custom_text,
         opacity: form.opacity,
       })
-      setMsg('Watermark settings saved.')
+      setMsg(t('watermarkSaved'))
       globalMutate(key)
     } catch (err: unknown) {
-      setMsg(err instanceof Error ? err.message : 'Failed to save')
+      setMsg(err instanceof Error ? err.message : tam('saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -313,9 +321,9 @@ function WatermarkTab({ projectId }: { projectId: string }) {
       {/* Enable toggle */}
       <div className="flex items-center justify-between rounded-lg border border-border bg-bg-secondary px-4 py-3">
         <div>
-          <p className="text-sm font-medium text-text-primary">Enable watermark</p>
+          <p className="text-sm font-medium text-text-primary">{t('enableWatermark')}</p>
           <p className="text-xs text-text-tertiary">
-            Burn user identity into shared media
+            {t('watermarkHint')}
           </p>
         </div>
         <Switch.Root
@@ -328,39 +336,39 @@ function WatermarkTab({ projectId }: { projectId: string }) {
       </div>
 
       <SimpleSelect<WatermarkPosition>
-        label="Position"
+        label={t('position')}
         value={form.position ?? 'center'}
         options={[
-          { value: 'center', label: 'Center' },
-          { value: 'corner', label: 'Corner' },
-          { value: 'tiled', label: 'Tiled' },
+          { value: 'center', label: t('positionCenter') },
+          { value: 'corner', label: t('positionCorner') },
+          { value: 'tiled', label: t('positionTiled') },
         ]}
         onChange={(v) => set('position', v)}
       />
 
       <SimpleSelect<WatermarkContent>
-        label="Content"
+        label={t('content')}
         value={form.content ?? 'email'}
         options={[
-          { value: 'email', label: 'User email' },
-          { value: 'name', label: 'User name' },
-          { value: 'custom_text', label: 'Custom text' },
+          { value: 'email', label: t('contentEmail') },
+          { value: 'name', label: t('contentName') },
+          { value: 'custom_text', label: t('contentCustomText') },
         ]}
         onChange={(v) => set('content', v)}
       />
 
       {form.content === 'custom_text' && (
         <Input
-          label="Custom watermark text"
+          label={t('customWatermarkText')}
           value={form.custom_text ?? ''}
           onChange={(e) => set('custom_text', e.target.value)}
-          placeholder="Confidential"
+          placeholder={t('customWatermarkTextPlaceholder')}
         />
       )}
 
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-text-secondary">
-          Opacity: {Math.round((form.opacity ?? 0.3) * 100)}%
+          {t('opacity', { percent: Math.round((form.opacity ?? 0.3) * 100) })}
         </label>
         <input
           type="range"
@@ -377,7 +385,7 @@ function WatermarkTab({ projectId }: { projectId: string }) {
 
       <div className="flex justify-end">
         <Button type="submit" size="sm" loading={saving}>
-          Save watermark
+          {t('saveWatermark')}
         </Button>
       </div>
     </form>
@@ -386,15 +394,19 @@ function WatermarkTab({ projectId }: { projectId: string }) {
 
 // ─── Metadata Tab ─────────────────────────────────────────────────────────────
 
-const FIELD_TYPES: { value: MetadataFieldType; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'number', label: 'Number' },
-  { value: 'date', label: 'Date' },
-  { value: 'select', label: 'Select' },
-  { value: 'multi_select', label: 'Multi Select' },
-]
+function fieldTypes(t: ReturnType<typeof useTranslations<'projectSettings'>>): { value: MetadataFieldType; label: string }[] {
+  return [
+    { value: 'text', label: t('fieldTypeText') },
+    { value: 'number', label: t('fieldTypeNumber') },
+    { value: 'date', label: t('fieldTypeDate') },
+    { value: 'select', label: t('fieldTypeSelect') },
+    { value: 'multi_select', label: t('fieldTypeMultiSelect') },
+  ]
+}
 
 function CreateFieldDialog({ projectId, onDone }: { projectId: string; onDone: () => void }) {
+  const t = useTranslations('projectSettings')
+  const tc = useTranslations('common')
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState('')
   const [fieldType, setFieldType] = React.useState<MetadataFieldType>('text')
@@ -429,7 +441,7 @@ function CreateFieldDialog({ projectId, onDone }: { projectId: string; onDone: (
       setRequired(false)
       onDone()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create field')
+      setError(err instanceof Error ? err.message : t('fieldCreateFailed'))
     } finally {
       setLoading(false)
     }
@@ -440,7 +452,7 @@ function CreateFieldDialog({ projectId, onDone }: { projectId: string; onDone: (
       <Dialog.Trigger asChild>
         <Button size="sm">
           <Plus className="h-4 w-4" />
-          Add Field
+          {t('addField')}
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -450,32 +462,32 @@ function CreateFieldDialog({ projectId, onDone }: { projectId: string; onDone: (
             <X className="h-4 w-4" />
           </Dialog.Close>
           <Dialog.Title className="text-base font-semibold text-text-primary">
-            Add Metadata Field
+            {t('addFieldTitle')}
           </Dialog.Title>
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <Input
-              label="Field name"
+              label={t('fieldName')}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Scene number"
+              placeholder={t('fieldNamePlaceholder')}
               required
             />
             <SimpleSelect<MetadataFieldType>
-              label="Field type"
+              label={t('fieldType')}
               value={fieldType}
-              options={FIELD_TYPES}
+              options={fieldTypes(t)}
               onChange={setFieldType}
             />
             {(fieldType === 'select' || fieldType === 'multi_select') && (
               <Input
-                label="Options (comma separated)"
+                label={t('optionsLabel')}
                 value={options}
                 onChange={(e) => setOptions(e.target.value)}
-                placeholder="Option 1, Option 2, Option 3"
+                placeholder={t('optionsPlaceholder')}
               />
             )}
             <div className="flex items-center justify-between rounded-lg border border-border bg-bg-tertiary px-3 py-2">
-              <span className="text-sm text-text-secondary">Required</span>
+              <span className="text-sm text-text-secondary">{t('required')}</span>
               <Switch.Root
                 checked={required}
                 onCheckedChange={setRequired}
@@ -487,10 +499,10 @@ function CreateFieldDialog({ projectId, onDone }: { projectId: string; onDone: (
             {error && <p className="text-xs text-status-error">{error}</p>}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
-                Cancel
+                {tc('cancel')}
               </Button>
               <Button type="submit" size="sm" loading={loading}>
-                Create
+                {tc('create')}
               </Button>
             </div>
           </form>
@@ -501,6 +513,8 @@ function CreateFieldDialog({ projectId, onDone }: { projectId: string; onDone: (
 }
 
 function MetadataTab({ projectId }: { projectId: string }) {
+  const t = useTranslations('projectSettings')
+  const tc = useTranslations('common')
   const key = `/projects/${projectId}/metadata-fields`
   const { data: fields, isLoading } = useSWR<MetadataField[]>(
     key,
@@ -520,7 +534,7 @@ function MetadataTab({ projectId }: { projectId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-secondary">
-          Define custom fields for assets in this project.
+          {t('metadataHint')}
         </p>
         <CreateFieldDialog projectId={projectId} onDone={() => globalMutate(key)} />
       </div>
@@ -533,17 +547,17 @@ function MetadataTab({ projectId }: { projectId: string }) {
         </div>
       ) : !fields || fields.length === 0 ? (
         <div className="rounded-lg border border-border bg-bg-secondary p-6 text-center">
-          <p className="text-sm text-text-secondary">No custom fields yet.</p>
+          <p className="text-sm text-text-secondary">{t('noFields')}</p>
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-bg-secondary overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-bg-tertiary">
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Name</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Type</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Options</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">Required</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">{t('name')}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">{t('type')}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">{t('optionsCol')}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-text-tertiary">{t('requiredCol')}</th>
                 <th className="px-4 py-2.5 text-right text-xs font-medium text-text-tertiary" />
               </tr>
             </thead>
@@ -560,7 +574,7 @@ function MetadataTab({ projectId }: { projectId: string }) {
                       : '—'}
                   </td>
                   <td className="px-4 py-3 text-xs text-text-tertiary">
-                    {field.required ? 'Yes' : 'No'}
+                    {field.required ? tc('yes') : tc('no')}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Button
@@ -585,19 +599,20 @@ function MetadataTab({ projectId }: { projectId: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProjectSettingsPage() {
+  const t = useTranslations('projectSettings')
   const params = useParams()
   const projectId = params.id as string
 
   return (
     <div className="p-6 space-y-6 max-w-3xl">
-      <h1 className="text-xl font-semibold text-text-primary">Project Settings</h1>
+      <h1 className="text-xl font-semibold text-text-primary">{t('title')}</h1>
 
       <Tabs.Root defaultValue="branding">
         <Tabs.List className="flex items-center gap-1 border-b border-border -mb-px">
           {[
-            { value: 'branding', label: 'Branding', icon: Palette },
-            { value: 'watermark', label: 'Watermark', icon: Droplets },
-            { value: 'metadata', label: 'Metadata Fields', icon: List },
+            { value: 'branding', label: t('brandingTab'), icon: Palette },
+            { value: 'watermark', label: t('watermarkTab'), icon: Droplets },
+            { value: 'metadata', label: t('metadataTab'), icon: List },
           ].map(({ value, label, icon: Icon }) => (
             <Tabs.Trigger
               key={value}

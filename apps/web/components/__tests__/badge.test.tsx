@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { Badge } from '../shared/badge'
 import type { AssetStatus } from '@/types'
 
@@ -7,38 +8,38 @@ describe('Badge component', () => {
   const statuses: AssetStatus[] = ['draft', 'in_review', 'approved', 'rejected', 'archived']
 
   it.each(statuses)('renders %s status badge', (status) => {
-    render(<Badge status={status} />)
+    renderWithI18n(<Badge status={status} />)
     const badge = screen.getByText(/Draft|In Review|Approved|Rejected|Archived/)
     expect(badge).toBeInTheDocument()
   })
 
   it('renders "Draft" label for draft status', () => {
-    render(<Badge status="draft" />)
+    renderWithI18n(<Badge status="draft" />)
     expect(screen.getByText('Draft')).toBeInTheDocument()
   })
 
   it('renders "In Review" label for in_review status', () => {
-    render(<Badge status="in_review" />)
+    renderWithI18n(<Badge status="in_review" />)
     expect(screen.getByText('In Review')).toBeInTheDocument()
   })
 
   it('renders "Approved" label for approved status', () => {
-    render(<Badge status="approved" />)
+    renderWithI18n(<Badge status="approved" />)
     expect(screen.getByText('Approved')).toBeInTheDocument()
   })
 
   it('renders "Rejected" label for rejected status', () => {
-    render(<Badge status="rejected" />)
+    renderWithI18n(<Badge status="rejected" />)
     expect(screen.getByText('Rejected')).toBeInTheDocument()
   })
 
   it('renders "Archived" label for archived status', () => {
-    render(<Badge status="archived" />)
+    renderWithI18n(<Badge status="archived" />)
     expect(screen.getByText('Archived')).toBeInTheDocument()
   })
 
   it('applies custom className', () => {
-    render(<Badge status="draft" className="my-custom-class" />)
+    renderWithI18n(<Badge status="draft" className="my-custom-class" />)
     const badge = screen.getByText('Draft')
     expect(badge.className).toContain('my-custom-class')
   })

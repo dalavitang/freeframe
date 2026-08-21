@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { CompareVersionSelect } from '../compare-version-select'
 import type { AssetVersion } from '@/types'
 
@@ -20,7 +21,7 @@ describe('CompareVersionSelect', () => {
   const v3 = makeVersion({ id: 'v-3', version_number: 3 })
 
   it('shows the selected label and lists versions ascending', () => {
-    render(
+    renderWithI18n(
       <CompareVersionSelect versions={[v3, v1, v2]} value="v-3" onChange={vi.fn()} accentClass="text-accent" />,
     )
     expect(screen.getByRole('button', { name: /v3/ })).toBeInTheDocument()
@@ -33,7 +34,7 @@ describe('CompareVersionSelect', () => {
 
   it('selects a ready version and closes', () => {
     const onChange = vi.fn()
-    render(<CompareVersionSelect versions={[v1, v3]} value="v-1" onChange={onChange} accentClass="text-accent" />)
+    renderWithI18n(<CompareVersionSelect versions={[v1, v3]} value="v-1" onChange={onChange} accentClass="text-accent" />)
     fireEvent.click(screen.getByRole('button', { name: /v1/ }))
     fireEvent.click(screen.getByRole('option', { name: /v3/ }))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ id: 'v-3' }))
@@ -41,7 +42,7 @@ describe('CompareVersionSelect', () => {
 
   it('disables non-ready versions', () => {
     const onChange = vi.fn()
-    render(<CompareVersionSelect versions={[v1, v2]} value="v-1" onChange={onChange} accentClass="text-accent" />)
+    renderWithI18n(<CompareVersionSelect versions={[v1, v2]} value="v-1" onChange={onChange} accentClass="text-accent" />)
     fireEvent.click(screen.getByRole('button', { name: /v1/ }))
     const processing = screen.getByRole('option', { name: /v2/ })
     expect(processing).toBeDisabled()
@@ -51,7 +52,7 @@ describe('CompareVersionSelect', () => {
 
   it('disables the version shown on the other pane (excludeId) so both sides differ', () => {
     const onChange = vi.fn()
-    render(<CompareVersionSelect versions={[v1, v3]} value="v-1" excludeId="v-3" onChange={onChange} accentClass="text-accent" />)
+    renderWithI18n(<CompareVersionSelect versions={[v1, v3]} value="v-1" excludeId="v-3" onChange={onChange} accentClass="text-accent" />)
     fireEvent.click(screen.getByRole('button', { name: /v1/ }))
     const other = screen.getByRole('option', { name: /v3/ })
     expect(other).toBeDisabled()

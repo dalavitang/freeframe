@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { FolderShareViewer } from '../folder-share-viewer'
 
 // Regression for #192: ShareReviewInner used to resolve its hooks with bare
@@ -24,12 +25,22 @@ describe('folder share — opening an asset mounts the review UI (#192)', () => 
       addEventListener() {}, removeEventListener() {},
       addListener() {}, removeListener() {}, dispatchEvent: () => false,
     }))
+    // Node 26 exposes no localStorage unless a storage file is provided; the
+    // review subtree reads ff_access_token/guest identity during render.
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+      clear: () => {},
+      key: () => null,
+      get length() { return 0 },
+    })
   })
 
   afterEach(() => { vi.unstubAllGlobals() })
 
   it('renders the review panel tabs after double-clicking an asset', async () => {
-    render(
+    renderWithI18n(
       <FolderShareViewer
         token="t" folderName="F" title="T" description={null}
         permission="comment" allowDownload={false} showVersions={false}

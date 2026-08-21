@@ -20,6 +20,7 @@ import {
   Lock,
 } from "lucide-react";
 import { cn, formatTime, formatTimecode, formatFrames } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { useReviewStore } from "@/stores/review-store";
 import { useReview } from "./review-provider";
 import { useDrawing } from "@/hooks/use-drawing";
@@ -88,12 +89,12 @@ type DrawingTool = "pen" | "rectangle" | "arrow" | "line";
 const DRAW_TOOLS: {
   id: DrawingTool;
   icon: React.ElementType;
-  label: string;
+  labelKey: DrawingTool;
 }[] = [
-  { id: "pen", icon: Pencil, label: "Pencil" },
-  { id: "arrow", icon: MousePointer, label: "Arrow" },
-  { id: "line", icon: Minus, label: "Line" },
-  { id: "rectangle", icon: Square, label: "Rectangle" },
+  { id: "pen", icon: Pencil, labelKey: "pen" },
+  { id: "arrow", icon: MousePointer, labelKey: "arrow" },
+  { id: "line", icon: Minus, labelKey: "line" },
+  { id: "rectangle", icon: Square, labelKey: "rectangle" },
 ];
 
 const DRAW_COLORS = [
@@ -117,6 +118,7 @@ function MentionDropdown({
 }) {
   const [members, setMembers] = React.useState<User[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const t = useTranslations("comments");
 
   React.useEffect(() => {
     if (!projectId) return;
@@ -155,7 +157,7 @@ function MentionDropdown({
   if (filtered.length === 0) {
     return (
       <div className="py-2 px-4 text-xs text-text-tertiary">
-        No members found
+        {t("noMembersFound")}
       </div>
     );
   }
@@ -229,6 +231,15 @@ export function CommentInput({
   const toggleAnnotation = onToggleAnnotation ?? toggleDrawingMode;
 
   const { pauseVideo } = useReview();
+
+  const t = useTranslations("comments");
+  const ta = useTranslations("annotation");
+  const TOOL_LABELS: Record<DrawingTool, string> = {
+    pen: ta("pen"),
+    arrow: ta("arrow"),
+    line: ta("line"),
+    rectangle: ta("rectangle"),
+  };
 
   const { clear, undo, getJSON } = useDrawing();
 
@@ -427,7 +438,7 @@ export function CommentInput({
       }
       if (replyToId && onCancelReply) onCancelReply();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to post comment");
+      setError(err instanceof Error ? err.message : t("failedToPost"));
     } finally {
       setSubmitting(false);
     }
@@ -443,7 +454,7 @@ export function CommentInput({
       {/* Reply indicator */}
       {replyToId && (
         <div className="flex items-center justify-between px-4 py-2 bg-accent/5 border-b border-accent/10 text-xs text-accent">
-          <span>Replying to comment</span>
+          <span>{t("replyingToComment")}</span>
           <button
             className="text-text-tertiary hover:text-text-primary"
             onClick={onCancelReply}
@@ -467,7 +478,7 @@ export function CommentInput({
               ref={textareaRef}
               className="flex-1 resize-none bg-transparent px-2.5 py-2.5 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none min-h-[38px] max-h-[120px]"
               placeholder={
-                replyToId ? "Write a reply..." : "Leave your comment..."
+                replyToId ? t("replyPlaceholder") : t("placeholder")
               }
               value={body}
               onChange={handleTextChange}
@@ -504,7 +515,7 @@ export function CommentInput({
             <button
               onClick={() => exitDrawingMode()}
               className="h-7 w-7 flex items-center justify-center rounded-md text-text-tertiary hover:bg-bg-tertiary hover:text-text-primary transition-colors"
-              title="Exit drawing"
+              title={ta("exitDrawing")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -517,7 +528,7 @@ export function CommentInput({
                 <button
                   key={tool.id}
                   onClick={() => setDrawingTool(tool.id as DrawingTool)}
-                  title={tool.label}
+                  title={TOOL_LABELS[tool.labelKey]}
                   className={cn(
                     "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
                     drawingTool === tool.id
@@ -551,14 +562,14 @@ export function CommentInput({
             <button
               onClick={undo}
               className="h-7 w-7 flex items-center justify-center rounded-md text-text-tertiary hover:bg-bg-tertiary hover:text-text-secondary transition-colors"
-              title="Undo"
+              title={ta("undo")}
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={clear}
               className="h-7 w-7 flex items-center justify-center rounded-md text-text-tertiary hover:bg-bg-tertiary hover:text-text-secondary transition-colors"
-              title="Clear"
+              title={ta("clear")}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -578,7 +589,7 @@ export function CommentInput({
                   )}
                   onClick={() => setTimecodeAttached((p) => !p)}
                   title={
-                    timecodeAttached ? "Detach timecode" : "Attach timecode"
+                    timecodeAttached ? ta("detachTimecode") : ta("attachTimecode")
                   }
                 >
                   <Clock className="h-4 w-4" />
@@ -595,7 +606,7 @@ export function CommentInput({
                       : "text-text-tertiary hover:bg-bg-tertiary hover:text-text-secondary",
                   )}
                   onClick={() => toggleAnnotation()}
-                  title="Draw annotation"
+                  title={ta("drawAnnotation")}
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -605,7 +616,7 @@ export function CommentInput({
               <div className="relative" ref={emojiRef}>
                 <button
                   className="h-7 w-7 flex items-center justify-center rounded-md text-text-tertiary hover:bg-bg-tertiary hover:text-text-secondary transition-colors"
-                  title="Add emoji"
+                  title={t("addEmoji")}
                   onClick={() => setEmojiOpen((p) => !p)}
                 >
                   <Smile className="h-4 w-4" />
@@ -649,7 +660,7 @@ export function CommentInput({
                   ) : (
                     <Globe className="h-3 w-3" />
                   )}
-                  {commentVisibility === "internal" ? "Internal" : "Public"}
+                  {commentVisibility === "internal" ? t("internal") : t("public")}
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {visDropdownOpen && (
@@ -667,7 +678,7 @@ export function CommentInput({
                       }}
                     >
                       <Globe className="h-3.5 w-3.5" />
-                      Public
+                      {t("public")}
                     </button>
                     <button
                       className={cn(
@@ -682,7 +693,7 @@ export function CommentInput({
                       }}
                     >
                       <Lock className="h-3.5 w-3.5" />
-                      Internal
+                      {t("internal")}
                     </button>
                   </div>
                 )}
@@ -693,7 +704,7 @@ export function CommentInput({
                 onClick={handleSubmit}
                 disabled={!body.trim() || submitting}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent text-text-primary hover:bg-accent/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                title="Send (Enter)"
+                title={t("sendHint")}
               >
                 {submitting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

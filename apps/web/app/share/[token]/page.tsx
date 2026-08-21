@@ -19,6 +19,7 @@ import {
   Music,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useLocale, useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { GuestCommentInput } from '@/components/review/guest-comment-input'
 import { FolderShareViewer } from '@/components/share/folder-share-viewer'
@@ -126,6 +127,7 @@ interface PasswordGateProps {
 }
 
 function PasswordGate({ onSubmit, error, loading }: PasswordGateProps) {
+  const t = useTranslations('share')
   const [password, setPassword] = React.useState('')
 
   function handleSubmit(e: React.FormEvent) {
@@ -141,8 +143,8 @@ function PasswordGate({ onSubmit, error, loading }: PasswordGateProps) {
             <Lock className="h-5 w-5 text-accent" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-text-primary">Password required</h1>
-            <p className="text-xs text-text-tertiary">Enter the password to access this link</p>
+            <h1 className="text-sm font-semibold text-text-primary">{t('passwordRequiredTitle')}</h1>
+            <p className="text-xs text-text-tertiary">{t('passwordRequiredDesc')}</p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -150,13 +152,13 @@ function PasswordGate({ onSubmit, error, loading }: PasswordGateProps) {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password…"
+            placeholder={t('enterPasswordPlaceholder')}
             autoFocus
             className="flex h-9 w-full rounded-md border border-border bg-bg-tertiary px-3 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-border-focus"
           />
           {error && <p className="text-xs text-status-error">{error}</p>}
           <Button type="submit" size="sm" className="w-full" loading={loading}>
-            Access link
+            {t('accessLink')}
           </Button>
         </form>
       </div>
@@ -171,6 +173,7 @@ interface ErrorStateProps {
 }
 
 function ErrorState({ expired }: ErrorStateProps) {
+  const t = useTranslations('share')
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 text-center shadow-xl">
@@ -184,12 +187,12 @@ function ErrorState({ expired }: ErrorStateProps) {
           </div>
         </div>
         <h1 className="text-sm font-semibold text-text-primary">
-          {expired ? 'Link expired' : 'Link not found'}
+          {expired ? t('linkExpiredTitle') : t('linkNotFoundTitle')}
         </h1>
         <p className="mt-1 text-xs text-text-tertiary">
           {expired
-            ? 'This share link has expired and is no longer accessible.'
-            : 'This share link is invalid or has been removed.'}
+            ? t('linkExpiredDesc')
+            : t('linkNotFoundDesc')}
         </p>
       </div>
     </div>
@@ -203,7 +206,9 @@ interface GuestCommentItemProps {
 }
 
 function GuestCommentItem({ comment }: GuestCommentItemProps) {
-  const displayName = comment.guest_author?.name || comment.author?.name || 'Unknown'
+  const tCommon = useTranslations('common')
+  const locale = useLocale()
+  const displayName = comment.guest_author?.name || comment.author?.name || tCommon('unknown')
   const avatarUrl = comment.author?.avatar_url ?? null
   const [imgError, setImgError] = React.useState(false)
 
@@ -232,7 +237,7 @@ function GuestCommentItem({ comment }: GuestCommentItemProps) {
           </span>
         )}
         <span className="ml-auto text-2xs text-zinc-600">
-          {new Date(comment.created_at).toLocaleDateString()}
+          {new Date(comment.created_at).toLocaleDateString(locale)}
         </span>
       </div>
       <p className="text-sm text-zinc-300 leading-relaxed">{comment.body}</p>
@@ -248,6 +253,7 @@ interface GuestCommentListProps {
 }
 
 function GuestCommentList({ token, refreshKey }: GuestCommentListProps) {
+  const t = useTranslations('share')
   const [comments, setComments] = React.useState<GuestComment[]>([])
   const [loading, setLoading] = React.useState(true)
 
@@ -274,9 +280,9 @@ function GuestCommentList({ token, refreshKey }: GuestCommentListProps) {
         <div className="h-12 w-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
           <MessageSquare className="h-6 w-6 text-zinc-600" />
         </div>
-        <p className="text-sm font-medium text-zinc-300">No comments — yet</p>
+        <p className="text-sm font-medium text-zinc-300">{t('noCommentsYet')}</p>
         <p className="text-xs text-zinc-500 mt-1">
-          Be the first to leave feedback on this asset.
+          {t('beFirstFeedback')}
         </p>
       </div>
     )
@@ -299,6 +305,8 @@ interface GuestApprovalActionsProps {
 }
 
 function GuestApprovalActions({ token, asset }: GuestApprovalActionsProps) {
+  const t = useTranslations('share')
+  const tBadge = useTranslations('badge')
   const [status, setStatus] = React.useState<'idle' | 'approved' | 'rejected'>('idle')
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -312,10 +320,10 @@ function GuestApprovalActions({ token, asset }: GuestApprovalActionsProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ asset_id: asset.id }),
       })
-      if (!response.ok) throw new Error('Failed to submit decision')
+      if (!response.ok) throw new Error(t('failedToSubmit'))
       setStatus(decision)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit')
+      setError(err instanceof Error ? err.message : t('failedToSubmit'))
     } finally {
       setLoading(false)
     }
@@ -325,7 +333,7 @@ function GuestApprovalActions({ token, asset }: GuestApprovalActionsProps) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 border border-green-500/20">
         <CheckCircle2 className="h-4 w-4 text-green-400" />
-        <span className="text-sm font-medium text-green-400">Approved</span>
+        <span className="text-sm font-medium text-green-400">{tBadge('approved')}</span>
       </div>
     )
   }
@@ -334,7 +342,7 @@ function GuestApprovalActions({ token, asset }: GuestApprovalActionsProps) {
     return (
       <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
         <XCircle className="h-4 w-4 text-red-400" />
-        <span className="text-sm font-medium text-red-400">Rejected</span>
+        <span className="text-sm font-medium text-red-400">{tBadge('rejected')}</span>
       </div>
     )
   }
@@ -350,7 +358,7 @@ function GuestApprovalActions({ token, asset }: GuestApprovalActionsProps) {
         className="text-red-400 border-red-500/30 hover:border-red-500/60 hover:bg-red-500/10"
       >
         <XCircle className="h-4 w-4" />
-        Reject
+        {t('reject')}
       </Button>
       <Button
         variant="primary"
@@ -360,7 +368,7 @@ function GuestApprovalActions({ token, asset }: GuestApprovalActionsProps) {
         className="bg-green-600 hover:bg-green-700"
       >
         <CheckCircle2 className="h-4 w-4" />
-        Approve
+        {t('approve')}
       </Button>
     </div>
   )
@@ -393,6 +401,7 @@ function ShareTopBar({
   onBack,
   branding,
 }: ShareTopBarProps) {
+  const t = useTranslations('share')
   const [downloading, setDownloading] = React.useState(false)
 
   async function handleDownload() {
@@ -471,7 +480,7 @@ function ShareTopBar({
             className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-60"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            Download
+            {t('download')}
           </button>
         )}
 
@@ -483,7 +492,7 @@ function ShareTopBar({
               ? 'bg-white/10 text-white'
               : 'text-zinc-500 hover:text-white hover:bg-white/10',
           )}
-          title="Toggle panel"
+          title={t('togglePanel')}
         >
           <Columns2 className="h-4 w-4" />
         </button>
@@ -502,6 +511,7 @@ interface ShareMediaViewerProps {
 }
 
 function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMediaViewerProps) {
+  const t = useTranslations('share')
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const audioRef = React.useRef<HTMLAudioElement>(null)
   const [fatalError, setFatalError] = React.useState<string | null>(null)
@@ -536,10 +546,10 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
             if (data.fatal) {
               setFatalError(
                 data.type === Hls.ErrorTypes.NETWORK_ERROR
-                  ? 'Network error loading video'
+                  ? t('networkError')
                   : data.type === Hls.ErrorTypes.MEDIA_ERROR
-                    ? 'Media decode error'
-                    : `Playback error: ${data.details || data.type}`
+                    ? t('mediaDecodeError')
+                    : t('playbackError', { detail: data.details || data.type })
               )
               if (hls) {
                 hls.destroy()
@@ -552,11 +562,11 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
           mediaEl!.src = resolvedUrl
         } else {
           // Browser supports neither MSE (hls.js) nor native HLS playback
-          setFatalError('HLS playback is not supported in this browser')
+          setFatalError(t('hlsNotSupported'))
         }
       })
       .catch(() => {
-        if (!cancelled) setFatalError('Failed to load video player')
+        if (!cancelled) setFatalError(t('failedToLoadPlayer'))
       })
     }
 
@@ -573,7 +583,7 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
         hls.destroy()
         hls = null
       }
-      setFatalError('Media playback failed')
+      setFatalError(t('mediaPlaybackFailed'))
     }
     mediaEl.addEventListener('error', handleMediaError)
 
@@ -605,12 +615,12 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
               preload="metadata"
               playsInline
             >
-              Your browser does not support video playback.
+              {t('browserNoVideo')}
             </video>
           ) : (
             <div className="flex flex-col items-center gap-2">
               <Video className="h-10 w-10 text-zinc-700" />
-              <p className="text-sm text-zinc-500">Video unavailable</p>
+              <p className="text-sm text-zinc-500">{t('videoUnavailable')}</p>
             </div>
           )}
         </div>
@@ -634,13 +644,13 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
                 <p className="text-sm font-medium text-zinc-300">{asset.name}</p>
               </div>
               <audio ref={audioRef} controls className="w-full">
-                Your browser does not support audio playback.
+                {t('browserNoAudio')}
               </audio>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
               <Music className="h-10 w-10 text-zinc-700" />
-              <p className="text-sm text-zinc-500">Audio unavailable</p>
+              <p className="text-sm text-zinc-500">{t('audioUnavailable')}</p>
             </div>
           )}
         </div>
@@ -661,7 +671,7 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
                 fallback.className = 'flex flex-col items-center gap-2'
                 fallback.innerHTML = `
                   <svg class="h-10 w-10 text-zinc-700" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                  <p class="text-sm text-zinc-500">Image unavailable</p>
+                  <p class="text-sm text-zinc-500">${t('imageUnavailable')}</p>
                 `
                 parent.appendChild(fallback)
               }
@@ -690,6 +700,10 @@ function ShareRightPanel({
   commentRefreshKey,
   onCommentPosted,
 }: ShareRightPanelProps) {
+  const t = useTranslations('share')
+  const tCommon = useTranslations('common')
+  const tLinks = useTranslations('shareLinks')
+  const locale = useLocale()
   const [activeTab, setActiveTab] = React.useState<'comments' | 'fields'>('comments')
 
   return (
@@ -707,7 +721,7 @@ function ShareRightPanel({
             )}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            Comments
+            {tLinks('comments')}
           </button>
           <button
             onClick={() => setActiveTab('fields')}
@@ -719,7 +733,7 @@ function ShareRightPanel({
             )}
           >
             <FileText className="h-3.5 w-3.5" />
-            Fields
+            {t('fields')}
           </button>
         </div>
       </div>
@@ -730,7 +744,7 @@ function ShareRightPanel({
           <>
             {/* Comments header */}
             <div className="px-4 py-2 shrink-0 flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-400">All comments</span>
+              <span className="text-xs font-medium text-zinc-400">{t('allComments')}</span>
             </div>
 
             {/* Comment list */}
@@ -752,26 +766,26 @@ function ShareRightPanel({
               />
             ) : (
               <div className="px-4 py-3 border-t border-white/[0.06] shrink-0">
-                <p className="text-xs text-zinc-600 text-center">View-only access. Comments are disabled.</p>
+                <p className="text-xs text-zinc-600 text-center">{t('viewOnlyCommentsDisabled')}</p>
               </div>
             )}
           </>
         ) : (
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             <div className="space-y-3">
-              <FieldRow label="Name" value={asset.name} />
-              <FieldRow label="Type" value={asset.asset_type.replace('_', ' ')} capitalize />
-{asset.description && <FieldRow label="Description" value={asset.description} />}
-              {asset.rating != null && <FieldRow label="Rating" value={`${asset.rating}/5`} />}
+              <FieldRow label={tCommon('name')} value={asset.name} />
+              <FieldRow label={t('type')} value={asset.asset_type.replace('_', ' ')} capitalize />
+{asset.description && <FieldRow label={t('description')} value={asset.description} />}
+              {asset.rating != null && <FieldRow label={t('rating')} value={`${asset.rating}/5`} />}
               {asset.due_date && (
                 <FieldRow
-                  label="Due date"
-                  value={new Date(asset.due_date).toLocaleDateString()}
+                  label={t('dueDate')}
+                  value={new Date(asset.due_date).toLocaleDateString(locale)}
                 />
               )}
               {asset.keywords && asset.keywords.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-xs text-zinc-500">Keywords</span>
+                  <span className="text-xs text-zinc-500">{t('keywords')}</span>
                   <div className="flex flex-wrap gap-1">
                     {asset.keywords.map((kw: string, i: number) => (
                       <span
@@ -914,6 +928,7 @@ export default function SharePage({
 }: {
   params: { token: string }
 }) {
+  const t = useTranslations('share')
   const { token } = params
 
   type PageState =
@@ -1065,16 +1080,16 @@ export default function SharePage({
             <Lock className="h-6 w-6 text-accent" />
           </div>
           <h1 className="text-lg font-semibold text-text-primary">
-            {state.title || 'Secure Share Link'}
+            {state.title || t('secureShareLink')}
           </h1>
           <p className="mt-2 text-sm text-text-tertiary">
-            This link is private. Please sign in to view the shared content.
+            {t('privateLinkSignIn')}
           </p>
           <a
             href="/login"
             className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
           >
-            Sign in to continue
+            {t('signInToContinue')}
           </a>
         </div>
       </div>

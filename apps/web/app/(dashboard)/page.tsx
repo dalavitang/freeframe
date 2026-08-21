@@ -4,17 +4,18 @@ import * as React from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { FolderOpen, Clock, UserCheck, type LucideIcon } from "lucide-react";
+import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
-import { formatRelativeTime } from "@/lib/utils";
+import { useFormatters } from "@/hooks/use-formatters";
 import { EmptyState } from "@/components/shared/empty-state";
 import type { Asset } from "@/types";
 
-function getGreeting(): string {
+function getGreeting(t: ReturnType<typeof useTranslations<"pages">>): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return t("greetingMorning");
+  if (hour < 17) return t("greetingAfternoon");
+  return t("greetingEvening");
 }
 
 interface AssetCardProps {
@@ -22,6 +23,10 @@ interface AssetCardProps {
 }
 
 function AssetCard({ asset }: AssetCardProps) {
+  const locale = useLocale();
+  const t = useTranslations("pages");
+  const { formatRelativeTime } = useFormatters();
+
   return (
     <Link
       href={`/assets/${asset.id}`}
@@ -43,7 +48,9 @@ function AssetCard({ asset }: AssetCardProps) {
         </p>
         {asset.due_date && (
           <p className="text-xs text-status-warning">
-            Due {new Date(asset.due_date).toLocaleDateString()}
+            {t("dueDate", {
+              date: new Date(asset.due_date).toLocaleDateString(locale),
+            })}
           </p>
         )}
       </div>
@@ -107,6 +114,7 @@ function Section({
 }
 
 export default function HomePage() {
+  const t = useTranslations("pages");
   const { user } = useAuthStore();
 
   const { data: recentAssets, isLoading: loadingRecent } = useSWR(
@@ -129,42 +137,40 @@ export default function HomePage() {
       {/* Greeting */}
       <div>
         <h1 className="text-xl font-semibold text-text-primary">
-          {getGreeting()},{" "}
+          {getGreeting(t)},{" "}
           <span className="text-accent">
-            {user?.name?.split(" ")[0] ?? "there"}
+            {user?.name?.split(" ")[0] ?? t("greetingYou")}
           </span>
         </h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Here&apos;s what&apos;s happening with your assets today.
-        </p>
+        <p className="mt-1 text-sm text-text-secondary">{t("subtitle")}</p>
       </div>
 
       {/* Sections */}
       <Section
-        title="Recent"
+        title={t("recent")}
         icon={Clock}
         assets={recentAssets}
         isLoading={loadingRecent}
-        emptyTitle="No assets yet"
-        emptyDescription="Assets you create or own will appear here."
+        emptyTitle={t("recentEmptyTitle")}
+        emptyDescription={t("recentEmptyDescription")}
       />
 
       <Section
-        title="Assigned to me"
+        title={t("assignedToMe")}
         icon={UserCheck}
         assets={assignedAssets}
         isLoading={loadingAssigned}
-        emptyTitle="Nothing assigned"
-        emptyDescription="Assets assigned to you for review will appear here."
+        emptyTitle={t("assignedEmptyTitle")}
+        emptyDescription={t("assignedEmptyDescription")}
       />
 
       <Section
-        title="Due soon"
+        title={t("dueSoon")}
         icon={Clock}
         assets={dueSoonAssets}
         isLoading={loadingDueSoon}
-        emptyTitle="No upcoming deadlines"
-        emptyDescription="Assets due within the next 7 days will appear here."
+        emptyTitle={t("dueSoonEmptyTitle")}
+        emptyDescription={t("dueSoonEmptyDescription")}
       />
     </div>
   );

@@ -1,10 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { screen, fireEvent } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { FpsPromptDialog } from '../fps-prompt-dialog'
 
 describe('FpsPromptDialog (#84)', () => {
   it('does not render its content when closed', () => {
-    render(
+    renderWithI18n(
       <FpsPromptDialog open={false} onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
     )
 
@@ -12,7 +13,7 @@ describe('FpsPromptDialog (#84)', () => {
   })
 
   it('renders all 9 fps options when open', () => {
-    render(
+    renderWithI18n(
       <FpsPromptDialog open onOpenChange={vi.fn()} onConfirm={vi.fn()} />,
     )
 
@@ -25,7 +26,7 @@ describe('FpsPromptDialog (#84)', () => {
   it('selecting a preset then confirming exports that fps and closes the dialog', () => {
     const onConfirm = vi.fn()
     const onOpenChange = vi.fn()
-    render(
+    renderWithI18n(
       <FpsPromptDialog open onOpenChange={onOpenChange} onConfirm={onConfirm} />,
     )
 
@@ -39,7 +40,7 @@ describe('FpsPromptDialog (#84)', () => {
   it('cancel closes the dialog without confirming', () => {
     const onConfirm = vi.fn()
     const onOpenChange = vi.fn()
-    render(
+    renderWithI18n(
       <FpsPromptDialog open onOpenChange={onOpenChange} onConfirm={onConfirm} />,
     )
 

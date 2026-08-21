@@ -53,12 +53,13 @@ export function formatFrames(seconds: number, fps = 24): string {
  * Format bytes into human-readable size string
  * e.g. 1_610_612_736 → "1.5 GB"
  */
-export function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number, locale = 'en'): string {
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
   const value = bytes / Math.pow(1024, i)
-  return `${parseFloat(value.toFixed(1))} ${units[i]}`
+  const number = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 })
+  return `${number.format(value)} ${units[i]}`
 }
 
 export const GB = 1024 ** 3
@@ -84,29 +85,35 @@ export function storageMeterState(
 /**
  * Format an ISO date string into a relative time string
  * e.g. "2 hours ago", "3 days ago", "just now"
+ * Uses Intl.RelativeTimeFormat for locale-aware singular/plural and wording.
  */
-export function formatRelativeTime(date: string): string {
+export function formatRelativeTime(
+  date: string,
+  locale = 'en',
+  justNowLabel = 'just now',
+): string {
   const now = Date.now()
   const then = new Date(date).getTime()
   const diffMs = now - then
   const diffSecs = Math.floor(diffMs / 1000)
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
 
-  if (diffSecs < 60) return 'just now'
+  if (diffSecs < 60) return justNowLabel
 
   const diffMins = Math.floor(diffSecs / 60)
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
+  if (diffMins < 60) return rtf.format(-diffMins, 'minute')
 
   const diffHours = Math.floor(diffMins / 60)
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+  if (diffHours < 24) return rtf.format(-diffHours, 'hour')
 
   const diffDays = Math.floor(diffHours / 24)
-  if (diffDays < 30) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+  if (diffDays < 30) return rtf.format(-diffDays, 'day')
 
   const diffMonths = Math.floor(diffDays / 30)
-  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''} ago`
+  if (diffMonths < 12) return rtf.format(-diffMonths, 'month')
 
   const diffYears = Math.floor(diffMonths / 12)
-  return `${diffYears} year${diffYears !== 1 ? 's' : ''} ago`
+  return rtf.format(-diffYears, 'year')
 }
 
 /**

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { api, ApiError } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { useAuthStore } from '@/stores/auth-store'
@@ -14,6 +15,7 @@ type Step = 'email' | 'code' | 'password' | 'classic'
 
 export function LoginForm() {
   const router = useRouter()
+  const t = useTranslations('auth.login')
   const [step, setStep] = useState<Step>('classic')
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState('')
@@ -46,11 +48,11 @@ export function LoginForm() {
     setGeneralError('')
 
     if (!email) {
-      setEmailError('Email is required')
+      setEmailError(t('emailRequired'))
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Enter a valid email address')
+      setEmailError(t('invalidEmail'))
       return
     }
 
@@ -62,7 +64,7 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setGeneralError(err.detail)
       } else {
-        setGeneralError('Failed to send code. Please try again.')
+        setGeneralError(t('sendCodeFailed'))
       }
     } finally {
       setLoading(false)
@@ -136,7 +138,7 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setCodeError(err.detail)
       } else {
-        setCodeError('Invalid or expired code. Please try again.')
+        setCodeError(t('invalidCode'))
       }
       setCode(['', '', '', '', '', ''])
       codeRefs.current[0]?.focus()
@@ -149,7 +151,7 @@ export function LoginForm() {
     e.preventDefault()
     const codeStr = code.join('')
     if (codeStr.length < 6) {
-      setCodeError('Enter the 6-digit code')
+      setCodeError(t('enterCode'))
       return
     }
     await submitCode(codeStr)
@@ -163,15 +165,15 @@ export function LoginForm() {
     setGeneralError('')
 
     if (!password) {
-      setPasswordError('Password is required')
+      setPasswordError(t('passwordRequired'))
       return
     }
     if (password.length < 8) {
-      setPasswordError('Password must be at least 8 characters')
+      setPasswordError(t('passwordTooShort'))
       return
     }
     if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match')
+      setPasswordError(t('passwordsMismatch'))
       return
     }
 
@@ -190,7 +192,7 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setGeneralError(err.detail)
       } else {
-        setGeneralError('Something went wrong. Please try again.')
+        setGeneralError(t('somethingWentWrong'))
       }
     } finally {
       setLoading(false)
@@ -204,11 +206,11 @@ export function LoginForm() {
     setClassicError('')
 
     if (!classicEmail || !classicPassword) {
-      setClassicError('Email and password are required')
+      setClassicError(t('credentialsRequired'))
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(classicEmail)) {
-      setClassicError('Enter a valid email address')
+      setClassicError(t('invalidEmail'))
       return
     }
 
@@ -226,7 +228,7 @@ export function LoginForm() {
       if (err instanceof ApiError) {
         setClassicError(err.detail)
       } else {
-        setClassicError('Invalid email or password')
+        setClassicError(t('invalidCredentials'))
       }
     } finally {
       setLoading(false)
@@ -239,8 +241,8 @@ export function LoginForm() {
     return (
       <div className="animate-slide-up">
         <div className="mb-8">
-          <h1 className="text-xl font-semibold text-text-primary mb-1">Sign in with password</h1>
-          <p className="text-sm text-text-secondary">Enter your email and password to continue.</p>
+          <h1 className="text-xl font-semibold text-text-primary mb-1">{t('classicTitle')}</h1>
+          <p className="text-sm text-text-secondary">{t('classicDescription')}</p>
         </div>
 
         <form onSubmit={handleClassicLogin} className="flex flex-col gap-4">
@@ -251,25 +253,25 @@ export function LoginForm() {
           )}
 
           <Input
-            label="Email address"
+            label={t('emailLabel')}
             type="email"
-            placeholder="you@example.com"
+            placeholder={t('emailPlaceholder')}
             autoComplete="email"
             value={classicEmail}
             onChange={(e) => setClassicEmail(e.target.value)}
           />
 
           <Input
-            label="Password"
+            label={t('passwordLabel')}
             type="password"
-            placeholder="Your password"
+            placeholder={t('classicPasswordPlaceholder')}
             autoComplete="current-password"
             value={classicPassword}
             onChange={(e) => setClassicPassword(e.target.value)}
           />
 
           <Button type="submit" size="lg" loading={loading} className="mt-2 w-full">
-            Sign in
+            {t('signIn')}
           </Button>
         </form>
 
@@ -279,7 +281,7 @@ export function LoginForm() {
             onClick={() => { setStep('email'); setClassicError('') }}
             className="text-sm text-text-tertiary hover:text-text-secondary transition-colors"
           >
-            Back to magic link
+            {t('backToMagicLink')}
           </button>
         </div>
       </div>
@@ -290,9 +292,9 @@ export function LoginForm() {
     return (
       <div className="animate-slide-up">
         <div className="mb-8">
-          <h1 className="text-xl font-semibold text-text-primary mb-1">Create your password</h1>
+          <h1 className="text-xl font-semibold text-text-primary mb-1">{t('createPasswordTitle')}</h1>
           <p className="text-sm text-text-secondary">
-            Set a password to secure your account going forward.
+            {t('createPasswordDescription')}
           </p>
         </div>
 
@@ -304,9 +306,9 @@ export function LoginForm() {
           )}
 
           <Input
-            label="Password"
+            label={t('passwordLabel')}
             type="password"
-            placeholder="Min. 8 characters"
+            placeholder={t('passwordMinPlaceholder')}
             autoComplete="new-password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setPasswordError('') }}
@@ -314,16 +316,16 @@ export function LoginForm() {
           />
 
           <Input
-            label="Confirm password"
+            label={t('confirmPasswordLabel')}
             type="password"
-            placeholder="Repeat password"
+            placeholder={t('confirmPasswordPlaceholder')}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
 
           <Button type="submit" size="lg" loading={loading} className="mt-2 w-full">
-            Set password &amp; continue
+            {t('setPasswordContinue')}
           </Button>
         </form>
       </div>
@@ -334,10 +336,12 @@ export function LoginForm() {
     return (
       <div className="animate-slide-up">
         <div className="mb-8">
-          <h1 className="text-xl font-semibold text-text-primary mb-1">Check your email</h1>
+          <h1 className="text-xl font-semibold text-text-primary mb-1">{t('checkEmailTitle')}</h1>
           <p className="text-sm text-text-secondary">
-            We sent a 6-digit code to{' '}
-            <span className="text-text-primary font-medium">{email}</span>
+            {t.rich('codeSentTo', {
+              email,
+              highlight: (chunks) => <span className="text-text-primary font-medium">{chunks}</span>,
+            })}
           </p>
         </div>
 
@@ -369,7 +373,7 @@ export function LoginForm() {
           )}
 
           <Button type="submit" size="lg" loading={loading} className="w-full">
-            Verify code
+            {t('verifyCode')}
           </Button>
         </form>
 
@@ -379,7 +383,7 @@ export function LoginForm() {
             onClick={() => { setStep('email'); setCode(['', '', '', '', '', '']); setCodeError('') }}
             className="block w-full text-sm text-text-tertiary hover:text-text-secondary transition-colors"
           >
-            Use a different email
+            {t('useDifferentEmail')}
           </button>
         </div>
       </div>
@@ -390,9 +394,9 @@ export function LoginForm() {
   return (
     <div className="animate-slide-up">
       <div className="mb-8">
-        <h1 className="text-xl font-semibold text-text-primary mb-1">Sign in to FreeFrame</h1>
+        <h1 className="text-xl font-semibold text-text-primary mb-1">{t('signInTitle')}</h1>
         <p className="text-sm text-text-secondary">
-          Enter your email and we&apos;ll send you a sign-in code.
+          {t('magicLinkDescription')}
         </p>
       </div>
 
@@ -404,9 +408,9 @@ export function LoginForm() {
         )}
 
         <Input
-          label="Email address"
+          label={t('emailLabel')}
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('emailPlaceholder')}
           autoComplete="email"
           value={email}
           onChange={(e) => { setEmail(e.target.value); setEmailError('') }}
@@ -414,7 +418,7 @@ export function LoginForm() {
         />
 
         <Button type="submit" size="lg" loading={loading} className="mt-2 w-full">
-          Send magic code
+          {t('sendMagicCode')}
         </Button>
       </form>
 
@@ -424,7 +428,7 @@ export function LoginForm() {
           onClick={() => { setStep('classic'); setGeneralError('') }}
           className="text-sm text-text-tertiary hover:text-text-secondary transition-colors"
         >
-          Sign in with password instead
+          {t('signInWithPassword')}
         </button>
       </div>
     </div>

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { NextIntlClientProvider } from 'next-intl'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { CompareScrubber } from '../compare-scrubber'
+import enMessages from '../../../../messages/en.json'
 
 const base = {
   t: 10, total: 63, isPlaying: false, fps: 25,
@@ -13,12 +16,12 @@ const base = {
 
 describe('CompareScrubber', () => {
   it('shows SMPTE timecode for the transport time', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     expect(screen.getByText('00:00:10:00')).toBeInTheDocument()
   })
 
   it('click on the track seeks by ratio', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     const track = screen.getByTestId('compare-track')
     track.getBoundingClientRect = () =>
       ({ left: 0, width: 630, top: 0, height: 8, right: 630, bottom: 8, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
@@ -27,7 +30,7 @@ describe('CompareScrubber', () => {
   })
 
   it('positions markers at (tc + offset) / total and reports clicks per side', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     const a = screen.getByTestId('marker-a-c1')
     expect(a.style.left).toBe(`${((10 + 2) / 63) * 100}%`)
     fireEvent.click(a)
@@ -35,7 +38,7 @@ describe('CompareScrubber', () => {
   })
 
   it('offset steppers nudge by one frame and one second, never below 0', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     fireEvent.click(screen.getByTestId('offA-plus-frame'))
     expect(base.onOffsetChange).toHaveBeenCalledWith('a', 2.04)
     fireEvent.click(screen.getByTestId('offB-minus-second'))
@@ -43,7 +46,7 @@ describe('CompareScrubber', () => {
   })
 
   it('labels the offset rows with the version numbers, not A/B', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     expect(screen.getByText('v1')).toBeInTheDocument()
     expect(screen.getByText('v2')).toBeInTheDocument()
     expect(screen.queryByText('A')).not.toBeInTheDocument()
@@ -52,31 +55,33 @@ describe('CompareScrubber', () => {
 
   it('reset button re-syncs offsets and disables when both are already 0', () => {
     const onResetOffsets = vi.fn()
-    const { rerender } = render(<CompareScrubber {...base} onResetOffsets={onResetOffsets} />)
+    const { rerender } = renderWithI18n(<CompareScrubber {...base} onResetOffsets={onResetOffsets} />)
     const reset = screen.getByTestId('offset-reset')
     expect(reset).not.toBeDisabled() // base has side A offset = 2
     fireEvent.click(reset)
     expect(onResetOffsets).toHaveBeenCalledTimes(1)
 
     rerender(
-      <CompareScrubber
-        {...base}
-        onResetOffsets={onResetOffsets}
-        timingA={{ offset: 0, duration: 60 }}
-        timingB={{ offset: 0, duration: 61 }}
-      />,
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <CompareScrubber
+          {...base}
+          onResetOffsets={onResetOffsets}
+          timingA={{ offset: 0, duration: 60 }}
+          timingB={{ offset: 0, duration: 61 }}
+        />
+      </NextIntlClientProvider>,
     )
     expect(screen.getByTestId('offset-reset')).toBeDisabled()
   })
 
   it('shows author initials inside the marker dot', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     const a = screen.getByTestId('marker-a-c1')
     expect(a.textContent).toContain('MC')
   })
 
   it('shows a hover tooltip with author name and body, hidden on mouse leave', () => {
-    render(<CompareScrubber {...base} />)
+    renderWithI18n(<CompareScrubber {...base} />)
     const a = screen.getByTestId('marker-a-c1')
     expect(screen.queryByText('Maya Chen')).not.toBeInTheDocument()
 

@@ -3,34 +3,45 @@
 import * as React from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { AlertCircle, Loader2, CheckCircle2, ChevronDown } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { useReviewStore } from '@/stores/review-store'
 import type { AssetVersion, AssetVersionStatus } from '@/types'
 
 export const versionStatusConfig: Record<
   AssetVersionStatus,
-  { label: string; className: string; icon: React.ReactNode }
+  { labelKey: AssetVersionStatus; className: string; icon: React.ReactNode }
 > = {
   uploading: {
-    label: 'Uploading',
+    labelKey: 'uploading',
     className: 'text-status-info',
     icon: <Loader2 className="h-2.5 w-2.5 animate-spin" />,
   },
   processing: {
-    label: 'Processing',
+    labelKey: 'processing',
     className: 'text-status-warning',
     icon: <Loader2 className="h-2.5 w-2.5 animate-spin" />,
   },
   ready: {
-    label: 'Ready',
+    labelKey: 'ready',
     className: 'text-status-success',
     icon: <CheckCircle2 className="h-2.5 w-2.5" />,
   },
   failed: {
-    label: 'Failed',
+    labelKey: 'failed',
     className: 'text-status-error',
     icon: <AlertCircle className="h-2.5 w-2.5" />,
   },
+}
+
+export function useVersionStatusLabels(): Record<AssetVersionStatus, string> {
+  const t = useTranslations('versionSwitcher')
+  return {
+    uploading: t('status.uploading'),
+    processing: t('status.processing'),
+    ready: t('status.ready'),
+    failed: t('status.failed'),
+  }
 }
 
 interface VersionSwitcherProps {
@@ -39,6 +50,8 @@ interface VersionSwitcherProps {
 }
 
 export function VersionSwitcher({ versions, className }: VersionSwitcherProps) {
+  const t = useTranslations('versionSwitcher')
+  const statusLabels = useVersionStatusLabels()
   const currentVersion = useReviewStore((s) => s.currentVersion)
   const setCurrentVersion = useReviewStore((s) => s.setCurrentVersion)
 
@@ -60,7 +73,7 @@ export function VersionSwitcher({ versions, className }: VersionSwitcherProps) {
 
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
-      <span className="text-xs text-text-tertiary shrink-0">Version:</span>
+      <span className="text-xs text-text-tertiary shrink-0">{t('version')}</span>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 bg-accent text-white text-xs font-medium hover:bg-accent/90 transition-colors outline-none">
@@ -69,10 +82,10 @@ export function VersionSwitcher({ versions, className }: VersionSwitcherProps) {
               <span
                 data-testid="version-status-indicator"
                 className="inline-flex items-center gap-1 text-[11px] text-white/90"
-                title={`v${latest.version_number} — ${inFlightCfg.label}`}
+                title={t('statusTitle', { version: `v${latest.version_number}`, status: statusLabels[inFlightCfg.labelKey] })}
               >
                 {inFlightCfg.icon}
-                {inFlightCfg.label}
+                {statusLabels[inFlightCfg.labelKey]}
               </span>
             )}
             {sorted.length > 1 && <ChevronDown className="h-3 w-3 opacity-70" />}
@@ -107,10 +120,10 @@ export function VersionSwitcher({ versions, className }: VersionSwitcherProps) {
                     <span>v{version.version_number}</span>
                     <span
                       className={cn('inline-flex items-center gap-1 text-[11px]', statusCfg.className)}
-                      title={statusCfg.label}
+                      title={statusLabels[statusCfg.labelKey]}
                     >
                       {statusCfg.icon}
-                      {statusCfg.label}
+                      {statusLabels[statusCfg.labelKey]}
                     </span>
                   </DropdownMenu.Item>
                 )

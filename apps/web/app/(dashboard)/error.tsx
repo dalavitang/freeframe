@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 interface ErrorProps {
@@ -9,6 +10,7 @@ interface ErrorProps {
 }
 
 export default function DashboardError({ error, reset }: ErrorProps) {
+  const t = useTranslations('errors')
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-4 py-16 text-center">
       {/* Icon */}
@@ -19,7 +21,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
       {/* Heading */}
       <div className="space-y-2">
         <h2 className="text-xl font-semibold text-text-primary">
-          Something went wrong
+          {t('genericTitle')}
         </h2>
 
         {/* Show error message only in development */}
@@ -31,7 +33,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
 
         {error?.digest && (
           <p className="text-xs text-text-tertiary">
-            Error ID: <span className="font-mono">{error.digest}</span>
+            {t('errorId', { id: error.digest })}
           </p>
         )}
       </div>
@@ -42,7 +44,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
         className="flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-text-inverse transition-opacity hover:opacity-90"
       >
         <RefreshCw className="h-4 w-4" />
-        Try again
+        {t('tryAgain')}
       </button>
     </div>
   )

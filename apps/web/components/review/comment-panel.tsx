@@ -28,7 +28,9 @@ import {
   Lock,
   Download,
 } from "lucide-react";
-import { cn, formatTime, formatRelativeTime } from "@/lib/utils";
+import { cn, formatTime } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import { useFormatters } from "@/hooks/use-formatters";
 import { useReviewStore } from "@/stores/review-store";
 import type { CommentWithReplies } from "@/hooks/use-comments";
 import {
@@ -175,6 +177,9 @@ function CommentMenu({
   onEdit: () => void;
   onDelete: (commentId: string) => Promise<void>;
 }) {
+  const t = useTranslations("comments");
+  const tc = useTranslations("common");
+  const ts = useTranslations("shareLinks");
   const [open, setOpen] = React.useState(false);
 
   // Only show menu for own comments — others only get emoji reactions
@@ -199,7 +204,7 @@ function CommentMenu({
           onClick={() => { onEdit(); setOpen(false) }}
         >
           <Pencil className="h-3.5 w-3.5" />
-          Edit
+          {tc("edit")}
         </button>
         <button
           className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-text-secondary hover:bg-bg-tertiary transition-colors"
@@ -216,7 +221,7 @@ function CommentMenu({
           }}
         >
           <Link2 className="h-3.5 w-3.5" />
-          Copy Link
+          {ts("copyLink")}
         </button>
         <button
           className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-red-400 hover:bg-bg-tertiary transition-colors"
@@ -226,7 +231,7 @@ function CommentMenu({
           }}
         >
           <Trash2 className="h-3.5 w-3.5" />
-          Delete
+          {tc("delete")}
         </button>
       </Dropdown>
     </div>
@@ -244,6 +249,8 @@ function InlineReplyInput({
   onSubmit: (parentId: string, body: string) => Promise<void>;
   onCancel: () => void;
 }) {
+  const t = useTranslations("comments");
+  const tc = useTranslations("common");
   const [body, setBody] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [emojiOpen, setEmojiOpen] = React.useState(false);
@@ -287,7 +294,7 @@ function InlineReplyInput({
         ref={inputRef}
         type="text"
         className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
-        placeholder="Leave your reply here..."
+        placeholder={t("replyHerePlaceholder")}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={(e) => {
@@ -307,7 +314,7 @@ function InlineReplyInput({
             <button
               onClick={() => setEmojiOpen((p) => !p)}
               className="h-7 w-7 flex items-center justify-center rounded-md text-text-tertiary hover:bg-bg-tertiary hover:text-text-secondary transition-colors"
-              title="Add emoji"
+              title={t("addEmoji")}
             >
               <Smile className="h-4 w-4" />
             </button>
@@ -337,7 +344,7 @@ function InlineReplyInput({
             onClick={onCancel}
             className="px-3 py-1 text-[12px] font-medium text-text-secondary hover:text-text-primary rounded-md border border-border hover:bg-bg-tertiary transition-colors"
           >
-            Cancel
+            {tc("cancel")}
           </button>
           <button
             onClick={handleSubmit}
@@ -389,6 +396,9 @@ function CommentItem({
   onSeekToTimecode,
   onShowAnnotation,
 }: CommentItemProps) {
+  const t = useTranslations("comments");
+  const tc = useTranslations("common");
+  const { formatRelativeTime } = useFormatters();
   const storeSeekTo = useReviewStore((s) => s.seekTo);
   const seekTo = onSeekToTimecode ?? storeSeekTo;
   const setActiveAnnotation = useReviewStore((s) => s.setActiveAnnotation);
@@ -410,7 +420,7 @@ function CommentItem({
   }, [isFocused]);
 
   const authorName =
-    comment.author?.name ?? comment.guest_author?.name ?? "Unknown";
+    comment.author?.name ?? comment.guest_author?.name ?? tc("unknown");
   const isOwn = !!(currentUserId && comment.author_id === currentUserId);
   const avatarColor = getAvatarColor(authorName);
   const isReplyingHere = replyingTo === comment.id && depth === 0;
@@ -526,7 +536,7 @@ function CommentItem({
                       showAnnotation(comment.annotation.drawing_data);
                     }
                   }}
-                  title="Jump to timecode"
+                  title={t("jumpToTimecode")}
                 >
                   <Clock className="h-2.5 w-2.5" />
                   {formatTime(comment.timecode_start)}
@@ -549,7 +559,7 @@ function CommentItem({
                     seekTo(comment.timecode_start, true);
                   }
                 }}
-                title="Show annotation"
+                title={t("showAnnotation")}
               >
                 <Pencil className="h-3 w-3" />
               </button>
@@ -581,13 +591,13 @@ function CommentItem({
                   }}
                   className="rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
                 >
-                  {saving ? 'Saving...' : 'Save'}
+                  {saving ? tc("saving") : tc("save")}
                 </button>
                 <button
                   onClick={() => { setEditing(false); setEditBody(comment.body); }}
                   className="rounded-md px-2.5 py-1 text-xs text-text-tertiary hover:text-text-primary transition-colors"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </button>
               </div>
             </div>
@@ -625,7 +635,7 @@ function CommentItem({
                 className="text-[13px] font-medium text-text-tertiary hover:text-text-secondary transition-colors"
                 onClick={() => onReply(comment.id)}
               >
-                Reply
+                {t("reply")}
               </button>
             )}
 
@@ -635,7 +645,7 @@ function CommentItem({
                 <button
                   className="h-7 w-7 flex items-center justify-center rounded-full text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary transition-colors"
                   onClick={() => setShowEmojiPicker((p) => !p)}
-                  title="Add reaction"
+                  title={t("addReaction")}
                 >
                   <Smile className="h-4 w-4" />
                 </button>
@@ -671,7 +681,7 @@ function CommentItem({
                   className="h-6 w-6 flex items-center justify-center rounded-full bg-emerald-500 text-text-inverse hover:bg-emerald-600 transition-colors disabled:opacity-50"
                   onClick={handleResolve}
                   disabled={resolving}
-                  title="Unresolve"
+                  title={t("unresolve")}
                 >
                   <Check className="h-3 w-3" strokeWidth={3} />
                 </button>
@@ -680,7 +690,7 @@ function CommentItem({
                   className="h-6 w-6 flex items-center justify-center rounded-full text-text-tertiary hover:text-emerald-400 hover:bg-bg-tertiary transition-colors disabled:opacity-50 opacity-0 group-hover/comment:opacity-100"
                   onClick={handleResolve}
                   disabled={resolving}
-                  title="Resolve"
+                  title={t("resolve")}
                 >
                   <CheckCircle2 className="h-4 w-4" />
                 </button>
@@ -711,8 +721,7 @@ function CommentItem({
             ) : (
               <ChevronRight className="h-3 w-3" />
             )}
-            {comment.replies.length}{" "}
-            {comment.replies.length === 1 ? "reply" : "replies"}
+            {t("replyCount", { count: comment.replies.length })}
           </button>
           {showReplies && (
             <div>
@@ -782,6 +791,8 @@ export function CommentPanel({
   exportVersionId,
   className,
 }: CommentPanelProps) {
+  const t = useTranslations("comments");
+  const tc = useTranslations("common");
   const focusedCommentId = useReviewStore((s) => s.focusedCommentId);
   const setFocusedCommentId = useReviewStore((s) => s.setFocusedCommentId);
   const setActiveAnnotation = useReviewStore((s) => s.setActiveAnnotation);
@@ -891,10 +902,10 @@ export function CommentPanel({
 
   const visLabel =
     visibility === "all"
-      ? "All comments"
+      ? t("visAll")
       : visibility === "public"
-        ? "Public comments"
-        : "Internal comments";
+        ? t("visPublic")
+        : t("visInternal");
 
   function toggleFilter(key: keyof FilterState) {
     setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -956,17 +967,17 @@ export function CommentPanel({
             {[
               {
                 id: "all" as const,
-                label: "All comments",
+                label: t("visAll"),
                 count: topLevel.length,
               },
               {
                 id: "public" as const,
-                label: "Public comments",
+                label: t("visPublic"),
                 count: publicCount,
               },
               {
                 id: "internal" as const,
-                label: "Internal comments",
+                label: t("visInternal"),
                 count: internalCount,
               },
             ].map((item) => (
@@ -1003,7 +1014,7 @@ export function CommentPanel({
                   ? "text-accent bg-accent/10"
                   : "text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary",
               )}
-              title="Filter"
+              title={t("filter")}
               onClick={() => {
                 setFilterOpen((p) => !p);
                 setVisOpen(false);
@@ -1019,34 +1030,34 @@ export function CommentPanel({
               className="w-56"
             >
               <div className="px-3 py-2 text-[11px] text-text-tertiary uppercase tracking-wider font-medium">
-                Filter by...
+                {t("filterBy")}
               </div>
               {[
                 {
                   key: "annotations" as const,
                   icon: Pencil,
-                  label: "Annotations",
+                  label: t("filterAnnotations"),
                 },
                 {
                   key: "attachments" as const,
                   icon: Paperclip,
-                  label: "Attachments",
+                  label: t("filterAttachments"),
                 },
                 {
                   key: "completed" as const,
                   icon: CheckCircle2,
-                  label: "Completed",
+                  label: t("filterCompleted"),
                 },
                 {
                   key: "incomplete" as const,
                   icon: Circle,
-                  label: "Incomplete",
+                  label: t("filterIncomplete"),
                 },
-                { key: "unread" as const, icon: Mail, label: "Unread" },
+                { key: "unread" as const, icon: Mail, label: t("filterUnread") },
                 {
                   key: "mentionsReactions" as const,
                   icon: AtSign,
-                  label: "Mentions and reactions",
+                  label: t("filterMentionsReactions"),
                 },
               ].map(({ key, icon: Icon, label }) => (
                 <button
@@ -1075,12 +1086,12 @@ export function CommentPanel({
               <div className="border-t border-border mt-1 pt-1">
                 <button className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-text-secondary hover:bg-bg-tertiary transition-colors">
                   <Hash className="h-4 w-4" />
-                  Hashtag
+                  {t("hashtag")}
                   <ChevronRight className="h-3.5 w-3.5 ml-auto" />
                 </button>
                 <button className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-text-secondary hover:bg-bg-tertiary transition-colors">
                   <User className="h-4 w-4" />
-                  Person
+                  {t("person")}
                   <ChevronRight className="h-3.5 w-3.5 ml-auto" />
                 </button>
               </div>
@@ -1090,7 +1101,7 @@ export function CommentPanel({
                     className="w-full py-1.5 text-[13px] text-text-secondary bg-bg-tertiary hover:bg-bg-hover rounded-lg transition-colors font-medium"
                     onClick={() => setFilters(EMPTY_FILTERS)}
                   >
-                    Clear Filters
+                    {t("clearFilters")}
                   </button>
                 </div>
               )}
@@ -1106,7 +1117,7 @@ export function CommentPanel({
                   ? "text-accent bg-accent/10"
                   : "text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary",
               )}
-              title="Sort"
+              title={t("sort")}
               onClick={() => {
                 setSortOpen((p) => !p);
                 setVisOpen(false);
@@ -1122,14 +1133,14 @@ export function CommentPanel({
               className="w-52"
             >
               <div className="px-3 py-2 text-[11px] text-text-tertiary uppercase tracking-wider font-medium">
-                Sort thread by...
+                {t("sortThreadBy")}
               </div>
               {[
-                { id: "timecode" as const, label: "Timecode (Default)" },
-                { id: "oldest" as const, label: "Oldest" },
-                { id: "newest" as const, label: "Newest" },
-                { id: "commenter" as const, label: "Commenter" },
-                { id: "completed" as const, label: "Completed" },
+                { id: "timecode" as const, label: t("sortTimecodeDefault") },
+                { id: "oldest" as const, label: t("sortOldest") },
+                { id: "newest" as const, label: t("sortNewest") },
+                { id: "commenter" as const, label: t("sortCommenter") },
+                { id: "completed" as const, label: t("sortCompleted") },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -1161,7 +1172,7 @@ export function CommentPanel({
                 ? "text-accent bg-accent/10"
                 : "text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary",
             )}
-            title="Search"
+            title={tc("search")}
             onClick={() => {
               setSearchOpen((p) => !p);
               if (searchOpen) setSearchQuery("");
@@ -1179,7 +1190,7 @@ export function CommentPanel({
                   ? "text-accent bg-accent/10"
                   : "text-text-tertiary hover:text-text-secondary hover:bg-bg-tertiary",
               )}
-              title="Export comments"
+              title={t("exportComments")}
               onClick={() => {
                 setExportOpen((p) => !p);
                 setVisOpen(false);
@@ -1196,7 +1207,7 @@ export function CommentPanel({
               className="w-56"
             >
               <div className="px-3 py-2 text-[11px] text-text-tertiary uppercase tracking-wider font-medium">
-                Export comments
+                {t("exportComments")}
               </div>
               {currentAsset?.asset_type === "video" && (
                 <>
@@ -1240,7 +1251,7 @@ export function CommentPanel({
               ref={searchRef}
               type="text"
               className="flex-1 bg-transparent text-[13px] text-text-primary placeholder:text-text-tertiary focus:outline-none"
-              placeholder="Search..."
+              placeholder={tc("searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -1259,7 +1270,7 @@ export function CommentPanel({
               }}
               className="text-[12px] text-text-tertiary hover:text-text-secondary font-medium"
             >
-              Cancel
+              {tc("cancel")}
             </button>
           </div>
         </div>
@@ -1279,10 +1290,10 @@ export function CommentPanel({
               <MessageSquare className="h-6 w-6" />
             </div>
             <p className="text-sm text-text-secondary font-medium">
-              No comments yet
+              {t("emptyTitle")}
             </p>
             <p className="text-xs text-text-tertiary mt-1">
-              Leave a comment below to start the review
+              {t("emptyDescription")}
             </p>
           </div>
         )}

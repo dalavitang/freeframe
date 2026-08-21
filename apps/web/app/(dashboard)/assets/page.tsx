@@ -3,6 +3,7 @@
 import * as React from 'react'
 import useSWR from 'swr'
 import { FolderOpen, Film, Image as ImageIcon, Music, Clock, Users, AtSign, UserCheck } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { AssetGrid } from '@/components/projects/asset-grid'
@@ -10,20 +11,29 @@ import type { Asset } from '@/types'
 
 type AssetFilter = 'all' | 'owned' | 'shared' | 'mentioned' | 'assigned' | 'due_soon'
 
+type AssetFilterLabelKey =
+  | 'allAssets'
+  | 'owned'
+  | 'sharedWithMe'
+  | 'mentioned'
+  | 'assigned'
+  | 'dueSoon'
+  | 'myAssets'
+
 interface FilterOption {
   value: AssetFilter
-  label: string
+  labelKey: AssetFilterLabelKey
   icon: React.ElementType
   apiParam: string | null
 }
 
 const FILTERS: FilterOption[] = [
-  { value: 'all', label: 'All Assets', icon: FolderOpen, apiParam: null },
-  { value: 'owned', label: 'Owned', icon: UserCheck, apiParam: 'owned' },
-  { value: 'shared', label: 'Shared with me', icon: Users, apiParam: 'shared' },
-  { value: 'mentioned', label: 'Mentioned', icon: AtSign, apiParam: 'mentioned' },
-  { value: 'assigned', label: 'Assigned', icon: UserCheck, apiParam: 'assigned' },
-  { value: 'due_soon', label: 'Due soon', icon: Clock, apiParam: 'due_soon' },
+  { value: 'all', labelKey: 'allAssets', icon: FolderOpen, apiParam: null },
+  { value: 'owned', labelKey: 'owned', icon: UserCheck, apiParam: 'owned' },
+  { value: 'shared', labelKey: 'sharedWithMe', icon: Users, apiParam: 'shared' },
+  { value: 'mentioned', labelKey: 'mentioned', icon: AtSign, apiParam: 'mentioned' },
+  { value: 'assigned', labelKey: 'assigned', icon: UserCheck, apiParam: 'assigned' },
+  { value: 'due_soon', labelKey: 'dueSoon', icon: Clock, apiParam: 'due_soon' },
 ]
 
 function buildKey(filter: AssetFilter): string {
@@ -32,6 +42,7 @@ function buildKey(filter: AssetFilter): string {
 }
 
 export default function AssetsPage() {
+  const t = useTranslations('assetsPage')
   const [activeFilter, setActiveFilter] = React.useState<AssetFilter>('all')
 
   const swrKey = buildKey(activeFilter)
@@ -42,12 +53,27 @@ export default function AssetsPage() {
     { keepPreviousData: true },
   )
 
+  const description = React.useMemo(() => {
+    switch (activeFilter) {
+      case 'all':
+        return t('descAll')
+      case 'owned':
+        return t('descOwned')
+      case 'shared':
+        return t('descShared')
+      case 'due_soon':
+        return t('descDueSoon')
+      default:
+        return t('descFiltered')
+    }
+  }, [activeFilter, t])
+
   return (
     <div className="flex h-full">
       {/* Left filter sidebar */}
       <div className="w-[200px] shrink-0 border-r border-border p-3 space-y-1">
         <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wider text-text-tertiary">
-          Filters
+          {t('filters')}
         </p>
         {FILTERS.map((f) => {
           const Icon = f.icon
@@ -64,7 +90,7 @@ export default function AssetsPage() {
               )}
             >
               <Icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-              <span className="truncate">{f.label}</span>
+              <span className="truncate">{t(f.labelKey)}</span>
             </button>
           )
         })}
@@ -75,18 +101,10 @@ export default function AssetsPage() {
         {/* Header row */}
         <div className="mb-5">
           <h1 className="text-base font-semibold text-text-primary">
-            {FILTERS.find((f) => f.value === activeFilter)?.label ?? 'My Assets'}
+            {t(FILTERS.find((f) => f.value === activeFilter)?.labelKey ?? 'myAssets')}
           </h1>
           <p className="mt-0.5 text-[13px] text-text-tertiary">
-            {activeFilter === 'all'
-              ? 'All assets accessible to you across projects.'
-              : activeFilter === 'owned'
-                ? 'Assets you created.'
-                : activeFilter === 'shared'
-                  ? 'Assets shared with you by others.'
-                  : activeFilter === 'due_soon'
-                    ? 'Assets due within the next 7 days.'
-                    : 'Filtered assets.'}
+            {description}
           </p>
         </div>
 
@@ -104,11 +122,11 @@ export default function AssetsPage() {
               <FolderOpen className="h-7 w-7 text-text-tertiary" strokeWidth={1.5} />
             </div>
             <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-text-primary">No assets found</p>
+              <p className="text-sm font-medium text-text-primary">{t('emptyTitle')}</p>
               <p className="text-[13px] text-text-tertiary max-w-[280px]">
                 {activeFilter === 'all'
-                  ? 'Assets from your projects will appear here once uploaded.'
-                  : 'No assets match the current filter.'}
+                  ? t('emptyDescriptionAll')
+                  : t('emptyDescriptionFilter')}
               </p>
             </div>
           </div>

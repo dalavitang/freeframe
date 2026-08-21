@@ -2,44 +2,55 @@
 
 import * as React from "react";
 import { Bell, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
 
-const commentNotifications = [
-  {
-    id: "general_comments",
-    title: "General Comments",
-    description: "When someone comments on an asset",
-  },
-  {
-    id: "comment_replies",
-    title: "Comment Replies",
-    description: "When someone replies to your comment",
-  },
-  {
-    id: "mentions",
-    title: "@Mentions",
-    description: "When someone @mentions you in a comment",
-  },
-];
+const commentNotificationIds = [
+  "general_comments",
+  "comment_replies",
+  "mentions",
+] as const;
 
-const assetNotifications = [
-  {
-    id: "other_uploads",
-    title: "Other Uploads",
-    description: "When other users upload assets",
-  },
-  {
-    id: "status_updates",
-    title: "Status Updates",
-    description: "When someone changes an asset's status",
-  },
-  {
-    id: "assigned_to_you",
-    title: "Assigned to You",
-    description: "When someone assigns an asset to you",
-  },
-];
+const assetNotificationIds = [
+  "other_uploads",
+  "status_updates",
+  "assigned_to_you",
+] as const;
+
+type NotificationTitleKey =
+  | "generalComments"
+  | "commentReplies"
+  | "mentions"
+  | "otherUploads"
+  | "statusUpdates"
+  | "assignedToYou";
+
+type NotificationDescriptionKey =
+  | "generalCommentsDesc"
+  | "commentRepliesDesc"
+  | "mentionsDesc"
+  | "otherUploadsDesc"
+  | "statusUpdatesDesc"
+  | "assignedToYouDesc";
+
+const titleKeys: Record<string, NotificationTitleKey> = {
+  general_comments: "generalComments",
+  comment_replies: "commentReplies",
+  mentions: "mentions",
+  other_uploads: "otherUploads",
+  status_updates: "statusUpdates",
+  assigned_to_you: "assignedToYou",
+};
+
+const descriptionKeys: Record<string, NotificationDescriptionKey> = {
+  general_comments: "generalCommentsDesc",
+  comment_replies: "commentRepliesDesc",
+  mentions: "mentionsDesc",
+  other_uploads: "otherUploadsDesc",
+  status_updates: "statusUpdatesDesc",
+  assigned_to_you: "assignedToYouDesc",
+};
 
 interface NotifPrefs {
   email_frequency: string;
@@ -63,6 +74,8 @@ const defaults: NotifPrefs = {
 };
 
 export default function NotificationsPage() {
+  const t = useTranslations("notificationSettings");
+  const tl = useTranslations("layout");
   const { user } = useAuthStore();
   const [prefs, setPrefs] = React.useState<NotifPrefs>(defaults);
   const [saving, setSaving] = React.useState(false);
@@ -103,10 +116,10 @@ export default function NotificationsPage() {
         </div>
         <div className="flex-1">
           <h1 className="text-lg font-semibold text-text-primary">
-            Notifications
+            {tl("notifications")}
           </h1>
           <p className="text-sm text-text-secondary">
-            Manage your notification preferences
+            {t("subtitle")}
           </p>
         </div>
         {saving && (
@@ -120,21 +133,21 @@ export default function NotificationsPage() {
           <Bell className="h-5 w-5 text-text-secondary mt-0.5" />
           <div className="flex-1">
             <h3 className="text-sm font-medium text-text-primary">
-              Email Notifications Frequency
+              {t("emailFrequency")}
             </h3>
             <p className="text-xs text-text-tertiary mt-1">
-              Email updates will be sent to your email address
+              {t("emailFrequencyHint")}
             </p>
             <select
               value={prefs.email_frequency}
               onChange={(e) => updatePref("email_frequency", e.target.value)}
               className="mt-3 w-40 rounded-md border border-border bg-bg-tertiary px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
             >
-              <option value="instant">Instantly</option>
-              <option value="15min">15 Minutes</option>
-              <option value="hourly">Hourly</option>
-              <option value="daily">Daily</option>
-              <option value="never">Never</option>
+              <option value="instant">{t("frequencyInstant")}</option>
+              <option value="15min">{t("frequency15min")}</option>
+              <option value="hourly">{t("frequencyHourly")}</option>
+              <option value="daily">{t("frequencyDaily")}</option>
+              <option value="never">{t("frequencyNever")}</option>
             </select>
           </div>
         </div>
@@ -142,29 +155,29 @@ export default function NotificationsPage() {
 
       {/* Comments Section */}
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-text-primary">Comments</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("comments")}</h2>
         <div className="space-y-3">
-          {commentNotifications.map((item) => (
+          {commentNotificationIds.map((id) => (
             <div
-              key={item.id}
+              key={id}
               className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-secondary"
             >
               <div>
                 <h3 className="text-sm font-medium text-text-primary">
-                  {item.title}
+                  {t(titleKeys[id])}
                 </h3>
                 <p className="text-xs text-text-tertiary mt-0.5">
-                  {item.description}
+                  {t(descriptionKeys[id])}
                 </p>
               </div>
               <select
-                value={prefs[item.id] || "all_on"}
-                onChange={(e) => updatePref(item.id, e.target.value)}
+                value={prefs[id] || "all_on"}
+                onChange={(e) => updatePref(id, e.target.value)}
                 className="rounded-md border border-border bg-bg-tertiary px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
               >
-                <option value="all_on">All On</option>
-                <option value="in_app">In-App Only</option>
-                <option value="all_off">All Off</option>
+                <option value="all_on">{t("allOn")}</option>
+                <option value="in_app">{t("inAppOnly")}</option>
+                <option value="all_off">{t("allOff")}</option>
               </select>
             </div>
           ))}
@@ -173,29 +186,29 @@ export default function NotificationsPage() {
 
       {/* Assets Section */}
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-text-primary">Assets</h2>
+        <h2 className="text-sm font-semibold text-text-primary">{t("assets")}</h2>
         <div className="space-y-3">
-          {assetNotifications.map((item) => (
+          {assetNotificationIds.map((id) => (
             <div
-              key={item.id}
+              key={id}
               className="flex items-center justify-between p-3 rounded-lg border border-border bg-bg-secondary"
             >
               <div>
                 <h3 className="text-sm font-medium text-text-primary">
-                  {item.title}
+                  {t(titleKeys[id])}
                 </h3>
                 <p className="text-xs text-text-tertiary mt-0.5">
-                  {item.description}
+                  {t(descriptionKeys[id])}
                 </p>
               </div>
               <select
-                value={prefs[item.id] || "all_on"}
-                onChange={(e) => updatePref(item.id, e.target.value)}
+                value={prefs[id] || "all_on"}
+                onChange={(e) => updatePref(id, e.target.value)}
                 className="rounded-md border border-border bg-bg-tertiary px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
               >
-                <option value="all_on">All On</option>
-                <option value="in_app">In-App Only</option>
-                <option value="all_off">All Off</option>
+                <option value="all_on">{t("allOn")}</option>
+                <option value="in_app">{t("inAppOnly")}</option>
+                <option value="all_off">{t("allOff")}</option>
               </select>
             </div>
           ))}
@@ -204,8 +217,7 @@ export default function NotificationsPage() {
 
       <div className="p-4 rounded-lg bg-bg-tertiary border border-border">
         <p className="text-xs text-text-secondary">
-          You will always get important administrative emails, such as password
-          resets and account billing.
+          {t("adminEmailsNote")}
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
+import { AuthTagline } from './tagline'
 
 export const metadata: Metadata = {
   title: 'FreeFrame — Auth',
@@ -35,9 +36,7 @@ export default function AuthLayout({
       </div>
 
       {/* Footer */}
-      <p className="relative mt-8 text-2xs text-text-tertiary">
-        Collaborative media review &amp; approval
-      </p>
+      <AuthTagline />
     </div>
   )
 }

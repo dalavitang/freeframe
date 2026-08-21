@@ -8,9 +8,10 @@ import {
   MessageSquare,
   CheckCircle,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useNotificationStore } from '@/stores/notification-store'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { formatRelativeTime } from '@/lib/utils'
+import { useFormatters } from '@/hooks/use-formatters'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/empty-state'
 import { cn } from '@/lib/utils'
@@ -24,17 +25,26 @@ const notificationIcons: Record<NotificationType, React.ElementType> = {
   approval: CheckCircle,
 }
 
-const notificationLabels: Record<NotificationType, string> = {
-  mention: 'mentioned you',
-  assignment: 'assigned you to an asset',
-  due_soon: 'asset due soon',
-  comment: 'commented on an asset',
-  approval: 'updated approval status',
+type NotificationLabelKey =
+  | 'mentionLabel'
+  | 'assignmentLabel'
+  | 'dueSoonLabel'
+  | 'commentLabel'
+  | 'approvalLabel'
+
+const notificationLabelKeys: Record<NotificationType, NotificationLabelKey> = {
+  mention: 'mentionLabel',
+  assignment: 'assignmentLabel',
+  due_soon: 'dueSoonLabel',
+  comment: 'commentLabel',
+  approval: 'approvalLabel',
 }
 
 function NotificationItem({ notification }: { notification: Notification }) {
+  const t = useTranslations('notificationsPage')
   const { markAsRead } = useNotificationStore()
   const Icon = notificationIcons[notification.type]
+  const { formatRelativeTime } = useFormatters()
 
   return (
     <button
@@ -59,7 +69,7 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
       <div className="flex flex-1 flex-col gap-0.5 min-w-0">
         <p className="text-sm text-text-primary">
-          {notificationLabels[notification.type]}
+          {t(notificationLabelKeys[notification.type])}
         </p>
         <p className="text-xs text-text-tertiary">
           {formatRelativeTime(notification.created_at)}
@@ -74,7 +84,10 @@ function NotificationItem({ notification }: { notification: Notification }) {
 }
 
 export default function NotificationsPage() {
-  usePageTitle('Notifications')
+  const t = useTranslations('notificationsPage')
+  const tl = useTranslations('layout')
+  const tn = useTranslations('notifications')
+  usePageTitle(tl('notifications'))
   const { notifications, isLoading, fetchNotifications, markAllRead, unreadCount } =
     useNotificationStore()
 
@@ -87,16 +100,16 @@ export default function NotificationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Notifications</h1>
+          <h1 className="text-lg font-semibold text-text-primary">{tl('notifications')}</h1>
           {unreadCount > 0 && (
             <p className="text-sm text-text-secondary mt-0.5">
-              {unreadCount} unread
+              {t('unreadCount', { count: unreadCount })}
             </p>
           )}
         </div>
         {unreadCount > 0 && (
           <Button variant="ghost" size="sm" onClick={markAllRead}>
-            Mark all read
+            {tn('markAllRead')}
           </Button>
         )}
       </div>
@@ -114,8 +127,8 @@ export default function NotificationsPage() {
       ) : notifications.length === 0 ? (
         <EmptyState
           icon={Bell}
-          title="No Updates Yet"
-          description="New activity on your account will show here."
+          title={tn('emptyTitle')}
+          description={tn('emptyDescription')}
         />
       ) : (
         <div className="space-y-0.5">

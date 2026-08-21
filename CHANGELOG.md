@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **The web UI is now localized (i18n) with English and Simplified Chinese**, auto-detected from the browser language and switchable from the header (persisted in an `ff_locale` cookie). Applies across the whole app — auth, dashboard, projects, review, share viewer, settings, and uploads — including locale-aware relative timestamps, byte sizes, plurals, and dates via `next-intl` (ICU).
+
 ## [1.9.0] - 2026-08-16
 
 ### Upgrade notes

@@ -4,6 +4,7 @@ import * as React from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { X, ChevronDown, ArrowLeft, Users, Crown, Loader2, Check } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/shared/avatar'
@@ -27,15 +28,22 @@ interface MemberWithUser {
   user: User
 }
 
-const ROLES: { value: ProjectRole; label: string; description: string }[] = [
-  { value: 'owner', label: 'Full Access', description: 'Can manage all resources within the project' },
-  { value: 'editor', label: 'Edit & Share', description: 'Can manage resources, download, and share' },
-  { value: 'reviewer', label: 'Comment Only', description: 'Can view and comment on the relevant resources' },
-  { value: 'viewer', label: 'View Only', description: 'Can view the relevant resources' },
-]
+const ROLE_KEYS: Record<ProjectRole, 'fullAccess' | 'editShare' | 'commentOnly' | 'viewOnly'> = {
+  owner: 'fullAccess',
+  editor: 'editShare',
+  reviewer: 'commentOnly',
+  viewer: 'viewOnly',
+}
 
-function roleLabelFor(role: ProjectRole) {
-  return ROLES.find((r) => r.value === role)?.label ?? role
+const ROLE_DESC_KEYS: Record<ProjectRole, 'ownerDesc' | 'editorDesc' | 'reviewerDesc' | 'viewerDesc'> = {
+  owner: 'ownerDesc',
+  editor: 'editorDesc',
+  reviewer: 'reviewerDesc',
+  viewer: 'viewerDesc',
+}
+
+function roleLabelFor(role: ProjectRole, tr: ReturnType<typeof useTranslations<'roles'>>) {
+  return tr(ROLE_KEYS[role])
 }
 
 // ─── Role Dropdown ──────────────────────────────────────────────────────────
@@ -49,6 +57,7 @@ function RoleDropdown({
   onChange: (role: ProjectRole) => void
   compact?: boolean
 }) {
+  const tr = useTranslations('roles')
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
@@ -59,7 +68,7 @@ function RoleDropdown({
             compact ? 'text-xs' : 'text-sm',
           )}
         >
-          {roleLabelFor(value)}
+          {roleLabelFor(value, tr)}
           <ChevronDown className="h-3.5 w-3.5" />
         </button>
       </DropdownMenu.Trigger>
@@ -69,20 +78,20 @@ function RoleDropdown({
           sideOffset={6}
           className="z-[200] w-72 rounded-xl border border-border bg-bg-secondary shadow-2xl py-1 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
-          {ROLES.map((r) => (
+          {(Object.keys(ROLE_KEYS) as ProjectRole[]).map((role) => (
             <DropdownMenu.Item
-              key={r.value}
-              onSelect={() => onChange(r.value)}
+              key={role}
+              onSelect={() => onChange(role)}
               className={cn(
                 'flex items-start gap-3 px-3 py-2.5 cursor-pointer outline-none transition-colors mx-1 rounded-lg',
-                value === r.value ? 'bg-bg-hover' : 'hover:bg-bg-hover',
+                value === role ? 'bg-bg-hover' : 'hover:bg-bg-hover',
               )}
             >
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-text-primary">{r.label}</p>
-                <p className="text-xs text-text-tertiary mt-0.5">{r.description}</p>
+                <p className="text-sm font-medium text-text-primary">{tr(ROLE_KEYS[role])}</p>
+                <p className="text-xs text-text-tertiary mt-0.5">{tr(ROLE_DESC_KEYS[role])}</p>
               </div>
-              {value === r.value && <Check className="h-4 w-4 text-accent shrink-0 mt-0.5" />}
+              {value === role && <Check className="h-4 w-4 text-accent shrink-0 mt-0.5" />}
             </DropdownMenu.Item>
           ))}
         </DropdownMenu.Content>
@@ -106,6 +115,8 @@ function AddView({
   onSwitchToManage: () => void
   onMemberAdded: () => void
 }) {
+  const t = useTranslations('projectMembers')
+  const tc = useTranslations('common')
   const [query, setQuery] = React.useState('')
   const [role, setRole] = React.useState<ProjectRole>('editor')
   const [suggestions, setSuggestions] = React.useState<User[]>([])
@@ -173,7 +184,7 @@ function AddView({
       setMessage('')
       onMemberAdded()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to add member'
+      const msg = err instanceof Error ? err.message : t('addFailed')
       setError(msg)
     } finally {
       setAdding(false)
@@ -188,7 +199,7 @@ function AddView({
           <Users className="h-4 w-4 text-accent" />
         </div>
         <Dialog.Title className="text-base font-semibold text-text-primary">
-          Add to {projectName}
+          {t('addTo', { name: projectName })}
         </Dialog.Title>
       </div>
 
@@ -203,17 +214,17 @@ function AddView({
               setSelectedUser(null)
               setError(null)
             }}
-            placeholder="Name or email"
+            placeholder={t('nameOrEmail')}
             className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-tertiary outline-none"
           />
           <RoleDropdown value={role} onChange={setRole} />
         </div>
-        <p className="mt-1.5 text-xs text-text-tertiary">Add a new or existing Member</p>
+        <p className="mt-1.5 text-xs text-text-tertiary">{t('addMemberHint')}</p>
 
         {/* Suggestions dropdown */}
         {showSuggestions && suggestions.length > 0 && (
           <div className="mt-2">
-            <p className="text-xs font-medium text-text-tertiary mb-1.5">Suggested</p>
+            <p className="text-xs font-medium text-text-tertiary mb-1.5">{t('suggested')}</p>
             <div className="space-y-0.5">
               {suggestions.map((user) => (
                 <button
@@ -242,7 +253,7 @@ function AddView({
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Add a message (optional)"
+          placeholder={t('addMessage')}
           rows={2}
           className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:border-border-focus resize-none"
         />
@@ -251,7 +262,7 @@ function AddView({
       {/* Actions */}
       <div className="flex items-center justify-end gap-2 px-6 py-4">
         <Dialog.Close asChild>
-          <Button variant="secondary" size="sm">Cancel</Button>
+          <Button variant="secondary" size="sm">{tc('cancel')}</Button>
         </Dialog.Close>
         <Button
           size="sm"
@@ -259,7 +270,7 @@ function AddView({
           loading={adding}
           onClick={handleAdd}
         >
-          Add
+          {tc('add')}
         </Button>
       </div>
 
@@ -274,7 +285,7 @@ function AddView({
             </div>
           )}
           <span className="text-sm text-text-secondary font-medium">
-            {membersList.length} Member{membersList.length !== 1 ? 's' : ''}
+            {t('memberCount', { count: membersList.length })}
           </span>
         </div>
         <button
@@ -282,7 +293,7 @@ function AddView({
           onClick={onSwitchToManage}
           className="text-sm text-text-secondary hover:text-text-primary font-medium transition-colors"
         >
-          Manage
+          {t('manage')}
         </button>
       </div>
     </div>
@@ -308,6 +319,8 @@ function ManageView({
   onBack: () => void
   onMembersChanged: () => void
 }) {
+  const t = useTranslations('projectMembers')
+  const tr = useTranslations('roles')
   const [removing, setRemoving] = React.useState<string | null>(null)
 
   async function handleRoleChange(userId: string, newRole: ProjectRole) {
@@ -343,7 +356,7 @@ function ManageView({
           <ArrowLeft className="h-4 w-4 text-text-secondary" />
         </button>
         <Dialog.Title className="text-base font-semibold text-text-primary">
-          Members of {projectName}
+          {t('membersOf', { name: projectName })}
         </Dialog.Title>
       </div>
 
@@ -363,7 +376,7 @@ function ManageView({
                 <div className="flex items-center gap-1.5">
                   <p className="text-sm font-medium text-text-primary truncate">{m.user.name}</p>
                   {isCurrentUser && (
-                    <span className="text-[10px] text-text-tertiary">(you)</span>
+                    <span className="text-[10px] text-text-tertiary">{t('you')}</span>
                   )}
                 </div>
                 <p className="text-xs text-text-tertiary truncate">{m.user.email}</p>
@@ -383,7 +396,7 @@ function ManageView({
                     isProjectOwner ? 'text-accent' : 'text-text-tertiary',
                   )}>
                     {isProjectOwner && <Crown className="h-3 w-3 inline mr-1" />}
-                    {roleLabelFor(m.role)}
+                    {roleLabelFor(m.role, tr)}
                   </span>
                 )}
 
@@ -407,7 +420,7 @@ function ManageView({
         })}
 
         {members.length === 0 && (
-          <p className="text-sm text-text-tertiary text-center py-8">No members yet</p>
+          <p className="text-sm text-text-tertiary text-center py-8">{t('noMembers')}</p>
         )}
       </div>
     </div>
@@ -422,6 +435,7 @@ export function ProjectMembersDialog({
   projectId,
   projectName,
 }: ProjectMembersDialogProps) {
+  const t = useTranslations('projectMembers')
   const [view, setView] = React.useState<'add' | 'manage'>('add')
   const [members, setMembers] = React.useState<MemberWithUser[]>([])
   const [loading, setLoading] = React.useState(false)
@@ -473,7 +487,7 @@ export function ProjectMembersDialog({
             <X className="h-4 w-4" />
           </Dialog.Close>
           <Dialog.Description className="sr-only">
-            Add or manage project members
+            {t('srDescription')}
           </Dialog.Description>
 
           {loading ? (

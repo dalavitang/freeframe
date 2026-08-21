@@ -10,6 +10,7 @@ import React, {
   useState,
 } from "react";
 import { api } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { useReviewStore } from "@/stores/review-store";
 import type { AssetResponse, AssetVersion, Comment } from "@/types";
 
@@ -61,6 +62,7 @@ export function ReviewProvider({
   shareSession,
   children,
 }: ReviewProviderProps) {
+  const t = useTranslations("review");
   const [asset, setAsset] = useState<AssetResponse | null>(null);
   const [versions, setVersions] = useState<AssetVersion[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -109,7 +111,7 @@ export function ReviewProvider({
         // Build pseudo asset from available data
         data = {
           id: assetId,
-          name: streamData?.name || "Asset",
+          name: streamData?.name || t("assetFallback"),
           description: null,
           asset_type: streamData?.asset_type || "image",
           status: "in_review",
@@ -201,7 +203,7 @@ export function ReviewProvider({
       }
     } catch (err) {
       if (!mountedRef.current) return;
-      setError(err instanceof Error ? err.message : "Failed to load asset");
+      setError(err instanceof Error ? err.message : t("failedToLoadAsset"));
     }
   }, [assetId, shareToken, shareSessionParam, setCurrentAsset, setCurrentVersion]);
 
@@ -331,7 +333,7 @@ export function ReviewProvider({
           headers,
           body: JSON.stringify({ ...payload, ...guestFields, asset_id: assetId }),
         });
-        if (!res.ok) throw new Error("Failed to post comment");
+        if (!res.ok) throw new Error(t("failedToPostComment"));
         comment = await res.json();
       } else {
         comment = await api.post<Comment>(

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { screen, fireEvent, within } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { useReviewStore } from '@/stores/review-store'
 import { CommentPanel } from '../comment-panel'
 
@@ -36,7 +37,7 @@ const c3 = makeComment({
 })
 
 function renderPanel() {
-  return render(
+  return renderWithI18n(
     <CommentPanel
       comments={[c26, cNone, c3]}
       onResolve={noop} onDelete={noop}

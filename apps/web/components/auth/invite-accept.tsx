@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { api, ApiError } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
 import { useAuthStore } from '@/stores/auth-store'
@@ -27,20 +28,26 @@ interface FormErrors {
   general?: string
 }
 
-function validate(name: string, password: string, confirmPassword: string): FormErrors {
+function validate(
+  name: string,
+  password: string,
+  confirmPassword: string,
+  t: ReturnType<typeof useTranslations<'auth.invite'>>,
+): FormErrors {
   const errors: FormErrors = {}
-  if (!name.trim()) errors.name = 'Name is required'
+  if (!name.trim()) errors.name = t('nameRequired')
   if (!password) {
-    errors.password = 'Password is required'
+    errors.password = t('passwordRequired')
   } else if (password.length < 8) {
-    errors.password = 'Password must be at least 8 characters'
+    errors.password = t('passwordTooShort')
   }
-  if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match'
+  if (password !== confirmPassword) errors.confirmPassword = t('passwordsMismatch')
   return errors
 }
 
 export function InviteAccept({ token }: InviteAcceptProps) {
   const router = useRouter()
+  const t = useTranslations('auth.invite')
   const [invite, setInvite] = useState<InviteDetails | null>(null)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteLoading, setInviteLoading] = useState(true)
@@ -58,9 +65,9 @@ export function InviteAccept({ token }: InviteAcceptProps) {
         setInvite(data)
       } catch (err) {
         if (err instanceof ApiError) {
-          setInviteError(err.status === 404 ? 'This invite link is invalid or has expired.' : err.detail)
+          setInviteError(err.status === 404 ? t('invalidOrExpired') : err.detail)
         } else {
-          setInviteError('Failed to load invite details.')
+          setInviteError(t('loadFailed'))
         }
       } finally {
         setInviteLoading(false)
@@ -71,7 +78,7 @@ export function InviteAccept({ token }: InviteAcceptProps) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const validation = validate(name, password, confirmPassword)
+    const validation = validate(name, password, confirmPassword, t)
     if (Object.keys(validation).length > 0) {
       setErrors(validation)
       return
@@ -92,7 +99,7 @@ export function InviteAccept({ token }: InviteAcceptProps) {
       if (err instanceof ApiError) {
         setErrors({ general: err.detail })
       } else {
-        setErrors({ general: 'Something went wrong. Please try again.' })
+        setErrors({ general: t('somethingWentWrong') })
       }
     } finally {
       setSubmitting(false)
@@ -115,7 +122,7 @@ export function InviteAccept({ token }: InviteAcceptProps) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </div>
-        <h2 className="text-lg font-semibold text-text-primary mb-2">Invalid invite</h2>
+        <h2 className="text-lg font-semibold text-text-primary mb-2">{t('invalidTitle')}</h2>
         <p className="text-sm text-text-secondary">{inviteError}</p>
       </div>
     )
@@ -126,19 +133,23 @@ export function InviteAccept({ token }: InviteAcceptProps) {
       {/* Invite card */}
       {invite && (
         <div className="mb-8 rounded-lg border border-border bg-bg-secondary p-4">
-          <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">You&apos;ve been invited to</p>
+          <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">{t('invitedTo')}</p>
           <p className="text-base font-semibold text-text-primary mb-1">{invite.org_name}</p>
           <p className="text-sm text-text-secondary">
-            Invited by <span className="text-text-primary">{invite.inviter_name}</span>{' '}
-            as <span className="capitalize text-text-primary">{invite.role}</span>
+            {t.rich('invitedBy', {
+              name: invite.inviter_name,
+              role: invite.role,
+              nameHighlight: (chunks) => <span className="text-text-primary">{chunks}</span>,
+              roleHighlight: (chunks) => <span className="capitalize text-text-primary">{chunks}</span>,
+            })}
           </p>
           <p className="text-sm text-text-tertiary mt-1">{invite.email}</p>
         </div>
       )}
 
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-text-primary mb-1">Accept invite</h1>
-        <p className="text-sm text-text-secondary">Set up your account to get started.</p>
+        <h1 className="text-xl font-semibold text-text-primary mb-1">{t('title')}</h1>
+        <p className="text-sm text-text-secondary">{t('description')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -149,9 +160,9 @@ export function InviteAccept({ token }: InviteAcceptProps) {
         )}
 
         <Input
-          label="Full name"
+          label={t('nameLabel')}
           type="text"
-          placeholder="Alex Johnson"
+          placeholder={t('namePlaceholder')}
           autoComplete="name"
           value={name}
           onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })) }}
@@ -159,9 +170,9 @@ export function InviteAccept({ token }: InviteAcceptProps) {
         />
 
         <Input
-          label="Password"
+          label={t('passwordLabel')}
           type="password"
-          placeholder="Min. 8 characters"
+          placeholder={t('passwordMinPlaceholder')}
           autoComplete="new-password"
           value={password}
           onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })) }}
@@ -169,9 +180,9 @@ export function InviteAccept({ token }: InviteAcceptProps) {
         />
 
         <Input
-          label="Confirm password"
+          label={t('confirmPasswordLabel')}
           type="password"
-          placeholder="Repeat password"
+          placeholder={t('confirmPasswordPlaceholder')}
           autoComplete="new-password"
           value={confirmPassword}
           onChange={(e) => { setConfirmPassword(e.target.value); setErrors((p) => ({ ...p, confirmPassword: undefined })) }}
@@ -179,7 +190,7 @@ export function InviteAccept({ token }: InviteAcceptProps) {
         />
 
         <Button type="submit" size="lg" loading={submitting} className="mt-2 w-full">
-          Create account &amp; join
+          {t('createButton')}
         </Button>
       </form>
     </div>

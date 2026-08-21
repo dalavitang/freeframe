@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 
 const h = vi.hoisted(() => {
   // Controllable, STABLE `data` reference (mirrors real SWR's cache — a fresh object each
@@ -23,7 +24,7 @@ describe('InstanceSettingsTab', () => {
   })
 
   it('saves the GB input as bytes via PUT', async () => {
-    render(<InstanceSettingsTab />)
+    renderWithI18n(<InstanceSettingsTab />)
     fireEvent.change(screen.getByLabelText(/storage limit/i), { target: { value: '10' } })
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
     await waitFor(() =>
@@ -32,7 +33,7 @@ describe('InstanceSettingsTab', () => {
   })
 
   it('saves 0 (unlimited) when the input is blank', async () => {
-    render(<InstanceSettingsTab />)
+    renderWithI18n(<InstanceSettingsTab />)
     fireEvent.change(screen.getByLabelText(/storage limit/i), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: /save/i }))
     await waitFor(() =>
@@ -42,7 +43,7 @@ describe('InstanceSettingsTab', () => {
 
   it('disables Save until settings have loaded (so a pre-load click cannot PUT 0 and wipe a cap)', () => {
     h.data = undefined
-    render(<InstanceSettingsTab />)
+    renderWithI18n(<InstanceSettingsTab />)
     expect(screen.getByRole('button', { name: /save/i })).toBeDisabled()
   })
 })

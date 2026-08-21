@@ -13,6 +13,7 @@ import {
   Check,
 } from 'lucide-react'
 import { cn, formatTime, formatTimecode, formatFrames } from '@/lib/utils'
+import { useTranslations } from 'next-intl'
 import { api } from '@/lib/api'
 import { useReviewStore, type TimeFormat } from '@/stores/review-store'
 import { useReview } from '@/components/review/review-provider'
@@ -35,6 +36,7 @@ interface AudioPlayerProps {
 }
 
 export function AudioPlayer({ asset, version, comments = [], className }: AudioPlayerProps) {
+  const t = useTranslations('players')
   const { setPlayheadTime, seekTarget, timeFormat, setTimeFormat } = useReviewStore()
   const [timeFormatOpen, setTimeFormatOpen] = React.useState(false)
   const timeFormatRef = React.useRef<HTMLDivElement>(null)
@@ -87,7 +89,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
       const sp = shareSession ? `&share_session=${encodeURIComponent(shareSession)}` : ''
       fetch(`${API_URL}/share/${shareToken}/stream/${asset.id}?version_id=${version.id}${sp}`)
-        .then(res => res.ok ? res.json() : Promise.reject(new Error('Failed to load audio')))
+        .then(res => res.ok ? res.json() : Promise.reject(new Error(t('failedToLoadAudio'))))
         .then(data => { if (!cancelled) setAudioUrl(data.url) })
         .catch(err => { if (!cancelled) { setError(err.message); setIsLoading(false) } })
       return () => { cancelled = true }
@@ -108,7 +110,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
         if (!cancelled) setAudioUrl(data.url)
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load audio')
+          setError(err instanceof Error ? err.message : t('failedToLoadAudio'))
           setIsLoading(false)
         }
       }
@@ -178,7 +180,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
     })
 
     ws.on('error', (err: Error) => {
-      setError(err?.message ?? 'Waveform error')
+      setError(err?.message ?? t('waveformError'))
       setIsLoading(false)
     })
 
@@ -246,7 +248,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
         {isLoading && !error && (
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-text-tertiary" />
-            <span className="text-xs text-text-tertiary">Loading waveform...</span>
+            <span className="text-xs text-text-tertiary">{t('loadingWaveform')}</span>
           </div>
         )}
 
@@ -285,7 +287,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
             onClick={handlePlayPause}
             disabled={!isReady}
             className="flex h-7 w-7 items-center justify-center rounded text-text-primary hover:bg-bg-hover transition-colors disabled:opacity-40"
-            title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            title={isPlaying ? t('pauseHint') : t('playHint')}
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </button>
@@ -296,7 +298,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
               'flex h-7 w-7 items-center justify-center rounded transition-colors',
               loop ? 'text-accent bg-accent/10' : 'text-text-tertiary hover:text-text-secondary hover:bg-bg-hover',
             )}
-            title="Loop"
+            title={t('loop')}
           >
             <Repeat className="h-4 w-4" />
           </button>
@@ -309,7 +311,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
             }}
             disabled={!isReady}
             className="flex h-7 items-center justify-center rounded px-1.5 text-xs font-medium text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors tabular-nums disabled:opacity-40"
-            title="Playback speed"
+            title={t('playbackSpeed')}
           >
             {speed}x
           </button>
@@ -317,7 +319,7 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
           <button
             onClick={() => setMuted(!muted)}
             className="flex h-7 w-7 items-center justify-center rounded text-text-tertiary hover:text-text-secondary hover:bg-bg-hover transition-colors"
-            title={muted ? 'Unmute' : 'Mute'}
+            title={muted ? t('unmute') : t('mute')}
           >
             {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
@@ -340,12 +342,12 @@ export function AudioPlayer({ asset, version, comments = [], className }: AudioP
           {timeFormatOpen && (
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-xl border border-white/10 bg-[#2a2a30] shadow-2xl py-1.5 animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 text-[11px] text-text-tertiary uppercase tracking-wider font-medium">
-                Time Format
+                {t('timeFormat')}
               </div>
               {([
-                { id: 'frames' as TimeFormat, label: 'Frames' },
-                { id: 'standard' as TimeFormat, label: 'Standard' },
-                { id: 'timecode' as TimeFormat, label: 'Timecode' },
+                { id: 'frames' as TimeFormat, label: t('frames') },
+                { id: 'standard' as TimeFormat, label: t('standard') },
+                { id: 'timecode' as TimeFormat, label: t('timecode') },
               ] as const).map((item) => (
                 <button
                   key={item.id}

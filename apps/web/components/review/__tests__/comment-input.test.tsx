@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { useReviewStore } from '@/stores/review-store'
 
 // CommentInput calls useReview() unconditionally; mirror the minimal shape
@@ -24,7 +25,7 @@ async function typeAndSubmit(text: string) {
 describe('CommentInput timecode at playhead 0', () => {
   it('submits timecode 0 (not undefined) when attached and the playhead is at 0:00', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -47,7 +48,7 @@ describe('CommentInput timecode at playhead 0', () => {
 
   it('submits the real timecode when attached and the playhead is non-zero', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -62,7 +63,7 @@ describe('CommentInput timecode at playhead 0', () => {
 
   it('omits the timecode when detached (no drawing)', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -79,7 +80,7 @@ describe('CommentInput timecode at playhead 0', () => {
   it('reads the playhead from the store when playheadTimeOverride is omitted (normal reviewer path)', async () => {
     useReviewStore.getState().setPlayheadTime(26)
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput assetId="a1" projectId="p1" assetType="video" onSubmit={onSubmit} />,
     )
     await typeAndSubmit('from store playhead')
@@ -88,7 +89,7 @@ describe('CommentInput timecode at playhead 0', () => {
 
   it('never attaches a timecode for image assets, even at a non-zero playhead', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -105,7 +106,7 @@ describe('CommentInput timecode at playhead 0', () => {
 describe('CommentInput compare drawing props (annotationActive / onToggleAnnotation)', () => {
   it('routes the pencil through onToggleAnnotation, not the global drawing toggle', () => {
     const onToggle = vi.fn()
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -122,7 +123,7 @@ describe('CommentInput compare drawing props (annotationActive / onToggleAnnotat
   })
 
   it('shows the drawing toolbar (not the pencil) when annotationActive is true', () => {
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -140,7 +141,7 @@ describe('CommentInput compare drawing props (annotationActive / onToggleAnnotat
     // A drawing from the other pane sits in the shared store...
     useReviewStore.getState().setPendingAnnotation({ objects: [{ type: 'path' }] })
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -160,7 +161,7 @@ describe('CommentInput compare drawing props (annotationActive / onToggleAnnotat
     const drawing = { objects: [{ type: 'path' }] }
     useReviewStore.getState().setPendingAnnotation(drawing)
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -180,7 +181,7 @@ describe('CommentInput compare drawing props (annotationActive / onToggleAnnotat
     useReviewStore.getState().setIsDrawingMode(true)
     useReviewStore.getState().setPendingAnnotation({ objects: [{ type: 'path' }] })
     const onSubmit = vi.fn().mockResolvedValue(undefined)
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"
@@ -199,7 +200,7 @@ describe('CommentInput compare drawing props (annotationActive / onToggleAnnotat
 
   it('an INACTIVE pane does not highlight its pencil from the other pane’s pending drawing', () => {
     useReviewStore.getState().setPendingAnnotation({ objects: [{ type: 'path' }] })
-    render(
+    renderWithI18n(
       <CommentInput
         assetId="a1"
         projectId="p1"

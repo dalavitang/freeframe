@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithI18n } from '@/test/render-with-i18n'
 import { VersionSwitcher } from '../version-switcher'
 import { useReviewStore } from '@/stores/review-store'
 import type { AssetVersion } from '@/types'
@@ -28,7 +29,7 @@ describe('VersionSwitcher trigger status indicator (#118)', () => {
     // Viewer is still on the ready v1 while v2 transcodes.
     useReviewStore.getState().setCurrentVersion(v1)
 
-    render(<VersionSwitcher versions={[v1, v2]} />)
+    renderWithI18n(<VersionSwitcher versions={[v1, v2]} />)
 
     // Trigger reflects the currently-viewed version...
     expect(screen.getByText('v1')).toBeInTheDocument()
@@ -42,7 +43,7 @@ describe('VersionSwitcher trigger status indicator (#118)', () => {
     const v2 = makeVersion({ version_number: 2, processing_status: 'uploading' })
     useReviewStore.getState().setCurrentVersion(v1)
 
-    render(<VersionSwitcher versions={[v1, v2]} />)
+    renderWithI18n(<VersionSwitcher versions={[v1, v2]} />)
 
     expect(screen.getByTestId('version-status-indicator')).toHaveTextContent(/uploading/i)
   })
@@ -52,7 +53,7 @@ describe('VersionSwitcher trigger status indicator (#118)', () => {
     const v2 = makeVersion({ version_number: 2, processing_status: 'ready' })
     useReviewStore.getState().setCurrentVersion(v2)
 
-    render(<VersionSwitcher versions={[v1, v2]} />)
+    renderWithI18n(<VersionSwitcher versions={[v1, v2]} />)
 
     expect(screen.queryByTestId('version-status-indicator')).toBeNull()
   })
