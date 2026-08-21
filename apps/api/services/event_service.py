@@ -30,7 +30,9 @@ async def event_stream(project_id: str) -> AsyncGenerator[str, None]:
     try:
         while True:
             try:
-                message = await asyncio.wait_for(pubsub.get_message(ignore_subscribe_messages=True), timeout=30.0)
+                # Block up to 30s for a real message (get_message(timeout=30.0) waits;
+                # the default timeout=0.0 would busy-loop this worker at 100% CPU).
+                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=30.0)
                 if message and message["type"] == "message":
                     try:
                         parsed = json.loads(message["data"])
