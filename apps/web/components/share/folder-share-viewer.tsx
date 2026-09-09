@@ -20,8 +20,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLocale, useTranslations } from 'next-intl'
+import { useShareAppearance } from '@/hooks/use-share-appearance'
+import { withBasePath } from '@/lib/base-path'
 import { useReview, type CreateCommentPayload } from '@/components/review/review-provider'
 import { useReviewStore } from '@/stores/review-store'
+import { useBrandingStore } from '@/stores/branding-store'
 import type {
   SharePermission,
   ShareLinkAppearance,
@@ -1066,11 +1069,12 @@ export function FolderShareViewer({
   const [panelOpen, setPanelOpen] = React.useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches)
   const [viewingAsset, setViewingAsset] = React.useState<FolderShareAssetItem | null>(null)
 
-  // Set page title
+  // Set page title — subscribe to orgName so the title updates once branding loads
+  const orgName = useBrandingStore((s) => s.orgName) || 'FreeFrame'
   React.useEffect(() => {
-    document.title = title ? `${title} – FreeFrame` : 'FreeFrame'
-    return () => { document.title = 'FreeFrame' }
-  }, [title])
+    document.title = title ? `${title} – ${orgName}` : orgName
+    return () => { document.title = orgName }
+  }, [title, orgName])
   const [selectedAsset, setSelectedAsset] = React.useState<FolderShareAssetItem | null>(null)
 
   const [assets, setAssets] = React.useState<FolderShareAssetItem[]>([])
@@ -1081,7 +1085,10 @@ export function FolderShareViewer({
   const [loadingMore, setLoadingMore] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  const accentColor = appearance.accent_color ?? branding?.primary_color ?? '#6366f1'
+  const accentColor = appearance.accent_color ?? branding?.primary_color
+  // No fallback: a link with no accent of its own, on an instance with no
+  // accent of its own, keeps the stylesheet's. Substituting a colour here
+  // would repaint every share link that already exists.
   const isDark = appearance.theme !== 'light'
   const cardSize = appearance.card_size ?? 'm'
   const aspectRatio = appearance.aspect_ratio ?? 'landscape'
@@ -1105,38 +1112,8 @@ export function FolderShareViewer({
     : 'aspect-[16/10]'
 
   // Apply share link theme (overrides user's global theme on the share page)
-  React.useEffect(() => {
-    const theme = isDark ? 'dark' : 'light'
-    document.documentElement.setAttribute('data-theme', theme)
-    return () => {
-      // Restore user's theme when leaving share page
-      try {
-        const stored = JSON.parse(localStorage.getItem('ff-theme') || '{}')
-        const userTheme = stored?.state?.theme || 'dark'
-        const resolved = userTheme === 'system'
-          ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
-          : userTheme
-        document.documentElement.setAttribute('data-theme', resolved)
-      } catch {
-        document.documentElement.setAttribute('data-theme', 'dark')
-      }
-    }
-  }, [isDark])
+  useShareAppearance(accentColor, isDark)
 
-  // Apply accent color via injected <style> tag — more reliable than inline CSS var override
-  React.useEffect(() => {
-    const styleId = 'ff-share-accent'
-    let el = document.getElementById(styleId) as HTMLStyleElement | null
-    if (!el) {
-      el = document.createElement('style')
-      el.id = styleId
-      document.head.appendChild(el)
-    }
-    el.textContent = `:root { --accent: ${accentColor} !important; }`
-    return () => {
-      document.getElementById(styleId)?.remove()
-    }
-  }, [accentColor])
 
   // Whether clicking opens viewer
   const openInViewer = appearance.open_in_viewer !== false
@@ -1300,7 +1277,7 @@ export function FolderShareViewer({
                       if (token) {
                         document.cookie = `ff_access_token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
                       }
-                      window.location.href = '/projects'
+                      window.location.href = withBasePath('/projects')
                     }
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-text-primary hover:bg-bg-tertiary transition-colors"
@@ -1313,7 +1290,7 @@ export function FolderShareViewer({
                       localStorage.removeItem('ff_access_token')
                       localStorage.removeItem('ff_refresh_token')
                       document.cookie = 'ff_access_token=; path=/; max-age=0'
-                      window.location.href = '/login'
+                      window.location.href = withBasePath('/login')
                     }
                   }}
                   className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"

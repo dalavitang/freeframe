@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useRouter } from "next/navigation";
 import type { User, UserStatus } from "@/types";
 import { InstanceSettingsTab } from "@/components/settings/instance-settings-tab";
+import { BrandingTab } from "@/components/settings/branding-tab";
 
 function BulkInviteDialog() {
   const t = useTranslations("adminSettings");
@@ -184,7 +185,16 @@ export default function AdminPage() {
   const locale = useLocale();
   const { user, isSuperAdmin } = useAuthStore();
   const router = useRouter();
-  const [tab, setTab] = React.useState<"users" | "instance">("users");
+  const [tab, setTab] = React.useState<"users" | "instance" | "branding">("users");
+
+  // Deep link to a sub-tab (e.g. the old /settings/branding bookmark redirects here).
+  // Read after mount so the server and client render the same initial markup.
+  React.useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested === "instance" || requested === "branding") {
+      setTab(requested);
+    }
+  }, []);
 
   const { data: usersResp, isLoading: loadingUsers } = useSWR<User[]>(
     isSuperAdmin ? "/admin/users" : null,
@@ -257,13 +267,19 @@ export default function AdminPage() {
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-muted">
-          <Shield className="h-5 w-5 text-accent" />
+          <Shield className="h-5 w-5 text-text-primary" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-text-primary">
             {t("title")}
           </h1>
-          <p className="text-sm text-text-secondary">{t("subtitle")}</p>
+          <p className="text-sm text-text-secondary">
+            {tab === "instance"
+              ? t("subtitleInstance")
+              : tab === "branding"
+                ? t("subtitleBranding")
+                : t("subtitle")}
+          </p>
         </div>
       </div>
 
@@ -272,6 +288,7 @@ export default function AdminPage() {
         {([
           ["users", t("tabUsers")],
           ["instance", t("tabInstance")],
+          ["branding", t("tabBranding")],
         ] as const).map(([key, label]) => (
           <button
             key={key}
@@ -289,6 +306,8 @@ export default function AdminPage() {
       </div>
 
       {tab === "instance" && <InstanceSettingsTab />}
+
+      {tab === "branding" && <BrandingTab />}
 
       {/* User management */}
       {tab === "users" && (

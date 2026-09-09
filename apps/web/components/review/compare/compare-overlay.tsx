@@ -287,6 +287,48 @@ export function CompareOverlay({ asset, versions, rightVersion, onClose, canComm
     [sideB],
   )
 
+  // Version switch (either pane): offA/offB were calibrated for the OLD pair —
+  // they no longer describe the new one, so drop them rather than silently
+  // misapplying a stale sync offset to the new pair (#182). The switched
+  // pane's shown drawing is likewise stale — it was frame-anchored to a
+  // comment on the OLD version and must not hang over the new one (#181).
+  //
+  // focusedCommentId is global rather than per-pane, and the comment list and
+  // progress bar both highlight from it. Clearing it on any switch would
+  // unfocus a comment the reviewer opened on the OTHER pane, which did not
+  // change — so only clear it when the drawing being dropped is the focused
+  // one, which lastAnnotationSide tells us.
+  const handleSwitchLeft = React.useCallback(
+    (v: AssetVersion) => {
+      writeParams((p) => { p.set('compare', v.id); p.delete('offA'); p.delete('offB') })
+      setAnnotationA(null)
+      if (lastAnnotationSide === 'a') {
+        setLastAnnotationSide(null)
+        setFocusedCommentId(null)
+      }
+    },
+    [writeParams, lastAnnotationSide, setFocusedCommentId],
+  )
+  const handleSwitchRight = React.useCallback(
+    (v: AssetVersion) => {
+      // The right pane's version lives in the store, its offsets in the URL.
+      // The store write is synchronous and router.replace is deferred, so
+      // updating them separately renders the NEW version with the OLD offset
+      // still applied for a commit or two. Batching them keeps the pair and
+      // its offsets consistent in every rendered frame.
+      React.startTransition(() => {
+        writeParams((p) => { p.delete('offA'); p.delete('offB') })
+        setCurrentVersion(v)
+        setAnnotationB(null)
+        if (lastAnnotationSide === 'b') {
+          setLastAnnotationSide(null)
+          setFocusedCommentId(null)
+        }
+      })
+    },
+    [writeParams, setCurrentVersion, lastAnnotationSide, setFocusedCommentId],
+  )
+
   // Shared zoom/pan for image modes
   const transform = useSharedTransform()
 
@@ -318,7 +360,7 @@ export function CompareOverlay({ asset, versions, rightVersion, onClose, canComm
             value={left.id}
             excludeId={right.id}
             accentClass="text-sky-400"
-            onChange={(v) => writeParams((p) => p.set('compare', v.id))}
+            onChange={handleSwitchLeft}
           />
         </div>
         {/* Center: asset title (flex-1 min-w-0 truncates without pushing either
@@ -346,7 +388,7 @@ export function CompareOverlay({ asset, versions, rightVersion, onClose, canComm
             value={right.id}
             excludeId={left.id}
             accentClass="text-emerald-400"
-            onChange={(v) => setCurrentVersion(v)}
+            onChange={handleSwitchRight}
           />
           <button
             type="button"

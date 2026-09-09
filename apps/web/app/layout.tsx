@@ -7,6 +7,7 @@ import { ToastProvider } from "@/components/shared/toast";
 import { ThemeInitializer } from "@/components/shared/theme-initializer";
 import { LocaleInitializer } from "@/components/shared/locale-initializer";
 import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n";
+import { BrandingHead } from "@/components/shared/branding-head";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -45,6 +46,7 @@ export default async function RootLayout({
             __html: `(function(){try{var d=JSON.parse(localStorage.getItem('ff-theme')||'{}');var t=d.state&&d.state.theme||'dark';if(t==='system'){t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){document.documentElement.setAttribute('data-theme','dark')}})()`,
           }}
         />
+        <BrandingHead />
       </head>
       <body className={`${dmSans.variable} font-sans antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>

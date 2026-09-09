@@ -19,10 +19,17 @@ import {
   Music,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { withBasePath } from '@/lib/base-path'
 import { useLocale, useTranslations } from 'next-intl'
+import { prefersLightMarkOn } from '@/lib/accent'
 import { Button } from '@/components/ui/button'
 import { GuestCommentInput } from '@/components/review/guest-comment-input'
 import { FolderShareViewer } from '@/components/share/folder-share-viewer'
+import { useBrandingStore } from '@/stores/branding-store'
+import { useShareAppearance } from '@/hooks/use-share-appearance'
+import { useResolvedTheme } from '@/hooks/use-resolved-theme'
+import { PoweredByBadge } from '@/components/shared/powered-by-badge'
+
 import type { Asset, SharePermission, ProjectBranding, ShareLinkAppearance } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -68,6 +75,8 @@ interface GuestAuthor {
 interface GuestComment {
   id: string
   body: string
+  guest_name?: string
+  guest_email?: string
   author?: CommentAuthor | null
   guest_author?: GuestAuthor | null
   created_at: string
@@ -85,12 +94,6 @@ async function fetchShareInfo(
   password?: string,
   logOpen?: boolean,
 ): Promise<ShareValidateResponse> {
-  const params = new URLSearchParams()
-  if (password) params.set('password', password)
-  if (logOpen) params.set('log_open', 'true')
-  const qs = params.toString() ? `?${params.toString()}` : ''
-  const url = `${API_URL}/share/${token}${qs}`
-
   // Include auth token if user is already logged in (for secure links)
   const headers: Record<string, string> = {}
   let accessToken: string | null = null
@@ -103,15 +106,47 @@ async function fetchShareInfo(
     headers['Authorization'] = `Bearer ${accessToken}`
   }
 
-  const response = await fetch(url, { headers })
-  if (!response.ok) {
-    if (response.status === 403) {
-      const data = await response.json().catch(() => ({}))
-      if (data.detail === 'Incorrect password') {
+  // When a password is supplied, use POST /share/{token}/verify so the
+  // password travels in the request body — not as a query string, which
+  // would be logged by nginx, browser history, Referer headers, and
+  // proxy/tunnel logs (SECURITY_AUDIT H3).
+  if (password) {
+    headers['Content-Type'] = 'application/json'
+    const body = JSON.stringify({ password, log_open: !!logOpen })
+    const resp = await fetch(`${API_URL}/share/${token}/verify`, {
+      method: 'POST',
+      headers,
+      body,
+    })
+    if (!resp.ok) {
+      if (resp.status === 403) {
+        // /verify answers 403 both for a wrong password and for a `secure`
+        // link whose viewer isn't signed in. Reporting the latter as
+        // "Incorrect password" strands the viewer retyping a password that
+        // was never the problem — they need the sign-in prompt instead.
+        const detail = await resp
+          .json()
+          .then((d) => d?.detail)
+          .catch(() => null)
+        if (typeof detail === 'string' && detail.includes('Authentication required')) {
+          return { requires_auth: true }
+        }
         return { requires_password: true, error: 'Incorrect password' }
       }
-      return { requires_password: true }
+      if (resp.status === 410) return { expired: true }
+      return {}
     }
+    return resp.json()
+  }
+
+  // No password — GET validates the link and either returns the full
+  // response (no password set / authenticated creator) or
+  // requires_password:true (password-protected, not yet verified).
+  const params = new URLSearchParams()
+  if (logOpen) params.set('log_open', 'true')
+  const qs = params.toString() ? `?${params.toString()}` : ''
+  const response = await fetch(`${API_URL}/share/${token}${qs}`, { headers })
+  if (!response.ok) {
     if (response.status === 410) return { expired: true }
     return {}
   }
@@ -127,7 +162,6 @@ interface PasswordGateProps {
 }
 
 function PasswordGate({ onSubmit, error, loading }: PasswordGateProps) {
-  const t = useTranslations('share')
   const [password, setPassword] = React.useState('')
 
   function handleSubmit(e: React.FormEvent) {
@@ -135,16 +169,30 @@ function PasswordGate({ onSubmit, error, loading }: PasswordGateProps) {
     if (password.trim()) onSubmit(password.trim())
   }
 
+  const { orgName, loginLogoUrl, orgLogoLight, orgLogoDark } =
+    useBrandingStore()
+  const theme = useResolvedTheme()
+  const displayLogo = loginLogoUrl || (theme === 'dark' ? (orgLogoDark ?? orgLogoLight) : (orgLogoLight ?? orgLogoDark)) || undefined
+  const t = useTranslations('share')
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 shadow-xl">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-muted">
-            <Lock className="h-5 w-5 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold text-text-primary">{t('passwordRequiredTitle')}</h1>
-            <p className="text-xs text-text-tertiary">{t('passwordRequiredDesc')}</p>
+        <div className="mb-4 flex flex-col items-center gap-3">
+          {displayLogo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={displayLogo} alt={orgName} className="h-10 object-contain" />
+          ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-icon.png" alt="FreeFrame" className="logo-dark h-10 w-10" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-icon-dark.png" alt="" aria-hidden="true" className="logo-light h-10 w-10" />
+            </>
+          )}
+          <div className="text-center">
+            <h1 className="text-sm font-semibold text-text-primary">{orgName}</h1>
+            <p className="text-xs text-text-tertiary mt-1">{t('passwordRequiredDesc')}</p>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -161,6 +209,7 @@ function PasswordGate({ onSubmit, error, loading }: PasswordGateProps) {
             {t('accessLink')}
           </Button>
         </form>
+        <PoweredByBadge className="mt-6 text-center justify-center" />
       </div>
     </div>
   )
@@ -173,7 +222,9 @@ interface ErrorStateProps {
 }
 
 function ErrorState({ expired }: ErrorStateProps) {
+  const { orgName } = useBrandingStore()
   const t = useTranslations('share')
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 text-center shadow-xl">
@@ -194,6 +245,7 @@ function ErrorState({ expired }: ErrorStateProps) {
             ? t('linkExpiredDesc')
             : t('linkNotFoundDesc')}
         </p>
+        <PoweredByBadge className="mt-6" showOrgName />
       </div>
     </div>
   )
@@ -213,9 +265,9 @@ function GuestCommentItem({ comment }: GuestCommentItemProps) {
   const [imgError, setImgError] = React.useState(false)
 
   return (
-    <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-2.5">
+    <div className="rounded-lg bg-bg-tertiary border border-white/5 px-3 py-2.5">
       <div className="flex items-center gap-2 mb-1.5">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/20 text-2xs font-medium text-purple-400">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-muted text-2xs font-medium text-text-primary">
           {avatarUrl && !imgError ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
@@ -229,18 +281,18 @@ function GuestCommentItem({ comment }: GuestCommentItemProps) {
             displayName.charAt(0).toUpperCase()
           )}
         </div>
-        <span className="text-xs font-medium text-zinc-200">{displayName}</span>
+        <span className="text-xs font-medium text-text-secondary">{displayName}</span>
         {comment.timecode_start != null && (
-          <span className="text-2xs text-zinc-500 font-mono bg-white/5 px-1.5 py-0.5 rounded">
+          <span className="text-2xs text-text-tertiary font-mono bg-white/5 px-1.5 py-0.5 rounded">
             {Math.floor(comment.timecode_start / 60)}:
             {String(Math.floor(comment.timecode_start % 60)).padStart(2, '0')}
           </span>
         )}
-        <span className="ml-auto text-2xs text-zinc-600">
+        <span className="ml-auto text-2xs text-text-tertiary">
           {new Date(comment.created_at).toLocaleDateString(locale)}
         </span>
       </div>
-      <p className="text-sm text-zinc-300 leading-relaxed">{comment.body}</p>
+      <p className="text-sm text-text-secondary leading-relaxed">{comment.body}</p>
     </div>
   )
 }
@@ -250,26 +302,28 @@ function GuestCommentItem({ comment }: GuestCommentItemProps) {
 interface GuestCommentListProps {
   token: string
   refreshKey: number
+  shareSession?: string | null
 }
 
-function GuestCommentList({ token, refreshKey }: GuestCommentListProps) {
+function GuestCommentList({ token, refreshKey, shareSession }: GuestCommentListProps) {
   const t = useTranslations('share')
   const [comments, setComments] = React.useState<GuestComment[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
     setLoading(true)
-    fetch(`${API_URL}/share/${token}/comments`)
+    const sp = shareSession ? `&share_session=${encodeURIComponent(shareSession)}` : ''
+    fetch(`${API_URL}/share/${token}/comments?_=1${sp}`)
       .then((r) => (r.ok ? r.json() : Promise.resolve([])))
       .then((data: CommentsResponse) => setComments(data))
       .catch(() => setComments([]))
       .finally(() => setLoading(false))
-  }, [token, refreshKey])
+  }, [token, refreshKey, shareSession])
 
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-text-tertiary" />
       </div>
     )
   }
@@ -278,10 +332,10 @@ function GuestCommentList({ token, refreshKey }: GuestCommentListProps) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
         <div className="h-12 w-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
-          <MessageSquare className="h-6 w-6 text-zinc-600" />
+          <MessageSquare className="h-6 w-6 text-text-tertiary" />
         </div>
-        <p className="text-sm font-medium text-zinc-300">{t('noCommentsYet')}</p>
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-sm font-medium text-text-secondary">{t('noCommentsYet')}</p>
+        <p className="text-xs text-text-tertiary mt-1">
           {t('beFirstFeedback')}
         </p>
       </div>
@@ -383,6 +437,7 @@ interface ShareTopBarProps {
   downloadUrl: string | null
   token: string
   assetId: string
+  shareSession?: string | null
   sidebarOpen: boolean
   onToggleSidebar: () => void
   onBack?: () => void
@@ -396,18 +451,24 @@ function ShareTopBar({
   downloadUrl,
   token,
   assetId,
+  shareSession,
   sidebarOpen,
   onToggleSidebar,
   onBack,
   branding,
 }: ShareTopBarProps) {
-  const t = useTranslations('share')
   const [downloading, setDownloading] = React.useState(false)
+  const t = useTranslations('share')
 
   async function handleDownload() {
     setDownloading(true)
     try {
-      const res = await fetch(`${API_URL}/share/${token}/stream/${assetId}?download=true`)
+      // The stream endpoint re-checks the password session, so a
+      // password-protected link 403s here without it and the download
+      // silently does nothing.
+      const params = new URLSearchParams({ download: 'true' })
+      if (shareSession) params.set('share_session', shareSession)
+      const res = await fetch(`${API_URL}/share/${token}/stream/${assetId}?${params}`)
       if (!res.ok) return
       const data = await res.json()
       if (data?.url) {
@@ -423,16 +484,24 @@ function ShareTopBar({
       setDownloading(false)
     }
   }
-  const primaryColor = branding?.primary_color ?? '#7c3aed'
+  const primaryColor = branding?.primary_color ?? '#6366f1'
+  const { loginLogoUrl, orgLogoDark, orgLogoLight } = useBrandingStore()
+  const theme = useResolvedTheme()
+  // Same cascade as the password gate, so a guest doesn't lose the instance logo
+  // one screen into the flow when only one variant is uploaded.
+  const instanceLogoUrl =
+    loginLogoUrl ||
+    (theme === 'dark' ? (orgLogoDark ?? orgLogoLight) : (orgLogoLight ?? orgLogoDark)) ||
+    undefined
 
   return (
-    <div className="flex items-center justify-between border-b border-white/[0.06] px-3 h-12 bg-zinc-950 shrink-0">
+    <div className="flex items-center justify-between border-b border-border px-3 h-12 bg-bg-primary shrink-0 relative">
       {/* Left: back + avatar + breadcrumb */}
       <div className="flex items-center gap-2 min-w-0 flex-1">
         {onBack && (
           <button
             onClick={onBack}
-            className="flex items-center justify-center h-7 w-7 rounded-md text-zinc-400 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+            className="flex items-center justify-center h-7 w-7 rounded-md text-text-tertiary hover:text-text-primary hover:bg-white/10 transition-colors shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -440,7 +509,7 @@ function ShareTopBar({
 
         {/* Avatar placeholder */}
         <div
-          className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white shrink-0"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-text-primary shrink-0"
           style={{ backgroundColor: primaryColor }}
         >
           {branding?.logo_s3_key ? (
@@ -452,20 +521,36 @@ function ShareTopBar({
                 ;(e.target as HTMLImageElement).style.display = 'none'
               }}
             />
+          ) : instanceLogoUrl ? (
+            <img
+              src={instanceLogoUrl}
+              alt=""
+              className="h-full w-full rounded-full object-cover"
+              onError={(e) => {
+                ;(e.target as HTMLImageElement).style.display = 'none'
+              }}
+            />
           ) : (
-            'FF'
+            // This mark sits on the primaryColor circle, not on the page
+            // background, so the page theme says nothing about what it needs
+            // to contrast with. Pick from the accent's own brightness.
+            <img
+              src={prefersLightMarkOn(primaryColor) ? '/logo-icon.png' : '/logo-icon-dark.png'}
+              alt="FreeFrame"
+              className="h-full w-full"
+            />
           )}
         </div>
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-[13px] min-w-0">
-          <span className="text-zinc-500 shrink-0 truncate max-w-[200px]">
+          <span className="text-text-tertiary shrink-0 truncate max-w-[200px]">
             {shareName}
           </span>
           {assetName && (
             <>
-              <span className="text-zinc-600">/</span>
-              <span className="text-white font-medium truncate">{assetName}</span>
+              <span className="text-text-tertiary">/</span>
+              <span className="text-text-primary font-medium truncate">{assetName}</span>
             </>
           )}
         </nav>
@@ -477,7 +562,7 @@ function ShareTopBar({
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="inline-flex items-center gap-1.5 rounded-md bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent hover:bg-accent-hover px-3 py-1.5 text-xs font-medium text-text-inverse transition-colors disabled:opacity-60"
           >
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
             {t('download')}
@@ -489,8 +574,8 @@ function ShareTopBar({
           className={cn(
             'flex items-center justify-center h-8 w-8 rounded-md transition-colors',
             sidebarOpen
-              ? 'bg-white/10 text-white'
-              : 'text-zinc-500 hover:text-white hover:bg-white/10',
+              ? 'bg-white/10 text-text-primary'
+              : 'text-text-tertiary hover:text-text-primary hover:bg-white/10',
           )}
           title={t('togglePanel')}
         >
@@ -597,11 +682,11 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
   }, [streamUrl, streamLoading, asset.asset_type])
 
   return (
-    <div className="flex-1 flex items-center justify-center bg-black min-h-0 overflow-hidden">
+    <div className="flex-1 flex items-center justify-center bg-bg-primary min-h-0 overflow-hidden">
       {asset.asset_type === 'video' && (
         <div className="w-full h-full flex items-center justify-center">
           {streamLoading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-text-tertiary" />
           ) : fatalError ? (
             <div className="flex flex-col items-center gap-2">
               <AlertTriangle className="h-10 w-10 text-red-500" />
@@ -619,8 +704,8 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
             </video>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              <Video className="h-10 w-10 text-zinc-700" />
-              <p className="text-sm text-zinc-500">{t('videoUnavailable')}</p>
+              <Video className="h-10 w-10 text-text-tertiary" />
+              <p className="text-sm text-text-tertiary">{t('videoUnavailable')}</p>
             </div>
           )}
         </div>
@@ -629,7 +714,7 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
       {asset.asset_type === 'audio' && (
         <div className="w-full max-w-2xl px-8">
           {streamLoading ? (
-            <Loader2 className="h-6 w-6 animate-spin text-zinc-500 mx-auto" />
+            <Loader2 className="h-6 w-6 animate-spin text-text-tertiary mx-auto" />
           ) : fatalError ? (
             <div className="flex flex-col items-center gap-2">
               <AlertTriangle className="h-10 w-10 text-red-500" />
@@ -639,9 +724,9 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
             <div className="space-y-6">
               <div className="flex flex-col items-center gap-3">
                 <div className="h-24 w-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                  <Music className="h-10 w-10 text-zinc-500" />
+                  <Music className="h-10 w-10 text-text-tertiary" />
                 </div>
-                <p className="text-sm font-medium text-zinc-300">{asset.name}</p>
+                <p className="text-sm font-medium text-text-secondary">{asset.name}</p>
               </div>
               <audio ref={audioRef} controls className="w-full">
                 {t('browserNoAudio')}
@@ -649,8 +734,8 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2">
-              <Music className="h-10 w-10 text-zinc-700" />
-              <p className="text-sm text-zinc-500">{t('audioUnavailable')}</p>
+              <Music className="h-10 w-10 text-text-tertiary" />
+              <p className="text-sm text-text-tertiary">{t('audioUnavailable')}</p>
             </div>
           )}
         </div>
@@ -670,8 +755,8 @@ function ShareMediaViewer({ asset, token, streamUrl, streamLoading }: ShareMedia
                 const fallback = document.createElement('div')
                 fallback.className = 'flex flex-col items-center gap-2'
                 fallback.innerHTML = `
-                  <svg class="h-10 w-10 text-zinc-700" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                  <p class="text-sm text-zinc-500">${t('imageUnavailable')}</p>
+                  <svg class="h-10 w-10 text-text-tertiary" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  <p class="text-sm text-text-tertiary">{t('imageUnavailable')}</p>
                 `
                 parent.appendChild(fallback)
               }
@@ -691,6 +776,7 @@ interface ShareRightPanelProps {
   permission: SharePermission
   commentRefreshKey: number
   onCommentPosted: () => void
+  shareSession?: string | null
 }
 
 function ShareRightPanel({
@@ -699,6 +785,7 @@ function ShareRightPanel({
   permission,
   commentRefreshKey,
   onCommentPosted,
+  shareSession,
 }: ShareRightPanelProps) {
   const t = useTranslations('share')
   const tCommon = useTranslations('common')
@@ -707,7 +794,7 @@ function ShareRightPanel({
   const [activeTab, setActiveTab] = React.useState<'comments' | 'fields'>('comments')
 
   return (
-    <div className="w-full md:w-[360px] absolute inset-y-0 right-0 z-20 md:static md:inset-auto flex flex-col border-l-0 md:border-l border-white/[0.06] bg-[#141416] shrink-0 animate-in slide-in-from-right-2 duration-150">
+    <div className="w-full md:w-[360px] absolute inset-y-0 right-0 z-20 md:static md:inset-auto flex flex-col border-l-0 md:border-l border-border bg-bg-secondary shrink-0 animate-in slide-in-from-right-2 duration-150">
       {/* Tabs */}
       <div className="px-4 pt-3 pb-2 shrink-0">
         <div className="flex items-center bg-white/5 rounded-lg p-0.5">
@@ -716,8 +803,8 @@ function ShareRightPanel({
             className={cn(
               'flex-1 py-1.5 text-[13px] font-medium rounded-md transition-all flex items-center justify-center gap-1.5',
               activeTab === 'comments'
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-300',
+                ? 'bg-white/10 text-text-primary shadow-sm'
+                : 'text-text-tertiary hover:text-text-secondary',
             )}
           >
             <MessageSquare className="h-3.5 w-3.5" />
@@ -728,8 +815,8 @@ function ShareRightPanel({
             className={cn(
               'flex-1 py-1.5 text-[13px] font-medium rounded-md transition-all flex items-center justify-center gap-1.5',
               activeTab === 'fields'
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-zinc-500 hover:text-zinc-300',
+                ? 'bg-white/10 text-text-primary shadow-sm'
+                : 'text-text-tertiary hover:text-text-secondary',
             )}
           >
             <FileText className="h-3.5 w-3.5" />
@@ -744,15 +831,15 @@ function ShareRightPanel({
           <>
             {/* Comments header */}
             <div className="px-4 py-2 shrink-0 flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-400">{t('allComments')}</span>
+              <span className="text-xs font-medium text-text-tertiary">{t('allComments')}</span>
             </div>
 
             {/* Comment list */}
-            <GuestCommentList token={token} refreshKey={commentRefreshKey} />
+            <GuestCommentList token={token} refreshKey={commentRefreshKey} shareSession={shareSession} />
 
             {/* Approval actions */}
             {permission === 'approve' && (
-              <div className="px-4 py-3 border-t border-white/[0.06] shrink-0">
+              <div className="px-4 py-3 border-t border-border shrink-0">
                 <GuestApprovalActions token={token} asset={asset} />
               </div>
             )}
@@ -762,11 +849,12 @@ function ShareRightPanel({
               <GuestCommentInput
                 token={token}
                 onCommentPosted={onCommentPosted}
-                className="border-t border-white/[0.06] bg-[#141416]"
+                shareSession={shareSession}
+                className="border-t border-border bg-bg-secondary"
               />
             ) : (
-              <div className="px-4 py-3 border-t border-white/[0.06] shrink-0">
-                <p className="text-xs text-zinc-600 text-center">{t('viewOnlyCommentsDisabled')}</p>
+              <div className="px-4 py-3 border-t border-border shrink-0">
+                <p className="text-xs text-text-tertiary text-center">{t('viewOnlyCommentsDisabled')}</p>
               </div>
             )}
           </>
@@ -785,12 +873,12 @@ function ShareRightPanel({
               )}
               {asset.keywords && asset.keywords.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-xs text-zinc-500">{t('keywords')}</span>
+                  <span className="text-xs text-text-tertiary">{t('keywords')}</span>
                   <div className="flex flex-wrap gap-1">
                     {asset.keywords.map((kw: string, i: number) => (
                       <span
                         key={i}
-                        className="text-2xs bg-white/5 text-zinc-400 rounded px-1.5 py-0.5"
+                        className="text-2xs bg-white/5 text-text-tertiary rounded px-1.5 py-0.5"
                       >
                         {kw}
                       </span>
@@ -817,8 +905,8 @@ function FieldRow({
 }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-xs text-zinc-500">{label}</span>
-      <span className={cn('text-xs text-zinc-200 font-medium truncate ml-4 max-w-[200px]', shouldCapitalize && 'capitalize')}>
+      <span className="text-xs text-text-tertiary">{label}</span>
+      <span className={cn('text-xs text-text-secondary font-medium truncate ml-4 max-w-[200px]', shouldCapitalize && 'capitalize')}>
         {value}
       </span>
     </div>
@@ -832,9 +920,11 @@ interface ShareViewerProps {
   asset: Asset & { thumbnail_url?: string; stream_url?: string }
   permission: SharePermission
   allowDownload: boolean
+  appearance?: ShareLinkAppearance | null
   branding: ProjectBranding | null
   shareName?: string
   onBack?: () => void
+  shareSession?: string | null
 }
 
 function ShareViewer({
@@ -842,14 +932,25 @@ function ShareViewer({
   asset,
   permission,
   allowDownload,
+  appearance,
   branding,
   shareName,
   onBack,
+  shareSession,
 }: ShareViewerProps) {
+  // Same resolution the folder grid uses: the link's own accent wins over the
+  // project's, which wins over the built-in. This viewer was never given the
+  // appearance at all, so a link's theme and accent were silently ignored here.
+  const accentColor = appearance?.accent_color ?? branding?.primary_color
+  // No fallback: a link with no accent of its own, on an instance with no
+  // accent of its own, keeps the stylesheet's. Substituting a colour here
+  // would repaint every share link that already exists.
+  useShareAppearance(accentColor, appearance?.theme !== 'light')
   const [streamUrl, setStreamUrl] = React.useState<string | null>(asset.stream_url ?? null)
   const [streamLoading, setStreamLoading] = React.useState(false)
   const [commentKey, setCommentKey] = React.useState(0)
   const [sidebarOpen, setSidebarOpen] = React.useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches)
+  const { orgName } = useBrandingStore()
 
   // For video/audio assets, get a stream URL if not already provided
   React.useEffect(() => {
@@ -859,7 +960,11 @@ function ShareViewer({
     }
     if (asset.asset_type !== 'video' && asset.asset_type !== 'audio') return
     setStreamLoading(true)
-    fetch(`${API_URL}/share/${token}/stream/${asset.id}`)
+    // Carries the password session for the same reason the download does —
+    // without it this 403s on a password-protected link and playback never
+    // starts.
+    const qs = shareSession ? `?share_session=${encodeURIComponent(shareSession)}` : ''
+    fetch(`${API_URL}/share/${token}/stream/${asset.id}${qs}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.stream_url) setStreamUrl(data.stream_url)
@@ -867,12 +972,19 @@ function ShareViewer({
       })
       .catch(() => null)
       .finally(() => setStreamLoading(false))
-  }, [token, asset.asset_type, asset.stream_url, asset.id])
+  }, [token, asset.asset_type, asset.stream_url, asset.id, shareSession])
 
-  const displayName = shareName || branding?.custom_title || 'FreeFrame'
+  /*
+   * Branding cascade for the share page top-bar title:
+   *   1. shareName — per-share override (set when creating the share link)
+   *   2. branding?.custom_title — per-project ProjectBranding override
+   *   3. orgName — instance-level org_name from InstanceBranding
+   *   4. 'FreeFrame' — hardcoded fallback
+   */
+  const displayName = shareName || branding?.custom_title || orgName || 'FreeFrame'
 
   return (
-    <div className="absolute inset-0 flex flex-col bg-zinc-950 text-white overflow-hidden">
+    <div className="absolute inset-0 flex flex-col bg-bg-primary text-text-primary overflow-hidden">
       {/* Top bar */}
       <ShareTopBar
         shareName={displayName}
@@ -881,6 +993,7 @@ function ShareViewer({
         downloadUrl={streamUrl}
         token={token}
         assetId={asset.id}
+        shareSession={shareSession}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={() => setSidebarOpen((p) => !p)}
         onBack={onBack}
@@ -905,19 +1018,25 @@ function ShareViewer({
             permission={permission}
             commentRefreshKey={commentKey}
             onCommentPosted={() => setCommentKey((k) => k + 1)}
+            shareSession={shareSession}
           />
         )}
       </div>
 
       {/* Custom footer */}
-      {branding?.custom_footer && (
-        <div className="shrink-0 border-t border-white/[0.06] px-4 py-1.5 text-center">
-          <p className="text-2xs text-zinc-600">{branding.custom_footer}</p>
+      {branding?.custom_footer ? (
+        <div className="shrink-0 border-t border-border px-4 py-1.5 text-center">
+          <p className="text-2xs text-text-tertiary">{branding.custom_footer}</p>
+        </div>
+      ) : (
+        <div className="shrink-0 border-t border-border px-4 py-1.5 text-center">
+          <PoweredByBadge className="justify-center text-text-tertiary" showOrgName />
         </div>
       )}
     </div>
   )
 }
+
 
 
 
@@ -928,7 +1047,6 @@ export default function SharePage({
 }: {
   params: { token: string }
 }) {
-  const t = useTranslations('share')
   const { token } = params
 
   type PageState =
@@ -943,6 +1061,7 @@ export default function SharePage({
         permission: SharePermission
         allowDownload: boolean
         showVersions: boolean
+        appearance: ShareLinkAppearance | null
         branding: ProjectBranding | null
       }
     | {
@@ -962,14 +1081,24 @@ export default function SharePage({
   const [state, setState] = React.useState<PageState>({ stage: 'loading' })
   const [shareSession, setShareSession] = React.useState<string | null>(null)
   const openLogged = React.useRef(false)
+  const { fetchBranding, loaded } = useBrandingStore()
+
+  React.useEffect(() => {
+    if (!loaded) fetchBranding()
+  }, [loaded, fetchBranding])
+  const t = useTranslations('share')
 
   async function validate(password?: string) {
     if (password) {
       setState({ stage: 'password_required', loading: true })
     }
     try {
-      const shouldLogOpen = !password && !openLogged.current
-      if (shouldLogOpen) openLogged.current = true
+      // Ask to log the open on whichever call first returns the full
+      // response. Gating this on `!password` meant a password-protected link
+      // never recorded one: the initial GET short-circuits at
+      // requires_password and drops log_open, and the /verify that follows
+      // always carried log_open:false because a password was supplied.
+      const shouldLogOpen = !openLogged.current
       const data = await fetchShareInfo(token, password, shouldLogOpen)
       if (data.requires_auth) {
         setState({ stage: 'auth_required', title: data.title })
@@ -988,12 +1117,15 @@ export default function SharePage({
         return
       }
 
+      // Only now is the open actually recorded — the early returns above are
+      // all cases the server did not log.
+      if (shouldLogOpen) openLogged.current = true
+
       // Store share session from password-protected link validation
       if (data.share_session) {
         setShareSession(data.share_session)
       }
 
-      // Folder share mode OR project root share mode
       if ((data.folder_id || data.project_id) && !data.asset_id) {
         const defaultAppearance: ShareLinkAppearance = {
           layout: 'grid',
@@ -1023,7 +1155,6 @@ export default function SharePage({
         return
       }
 
-      // Standard asset share mode
       if (!data.asset) {
         setState({ stage: 'invalid' })
         return
@@ -1034,6 +1165,7 @@ export default function SharePage({
         permission: data.permission,
         allowDownload: data.allow_download ?? false,
         showVersions: data.show_versions ?? true,
+        appearance: data.appearance ?? null,
         branding: data.branding ?? null,
       })
     } catch {
@@ -1048,8 +1180,8 @@ export default function SharePage({
 
   if (state.stage === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
+      <div className="flex min-h-screen items-center justify-center bg-bg-primary">
+        <Loader2 className="h-8 w-8 animate-spin text-text-tertiary" />
       </div>
     )
   }
@@ -1077,7 +1209,7 @@ export default function SharePage({
       <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
         <div className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 shadow-xl text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-muted">
-            <Lock className="h-6 w-6 text-accent" />
+            <Lock className="h-6 w-6 text-text-primary" />
           </div>
           <h1 className="text-lg font-semibold text-text-primary">
             {state.title || t('secureShareLink')}
@@ -1086,8 +1218,8 @@ export default function SharePage({
             {t('privateLinkSignIn')}
           </p>
           <a
-            href="/login"
-            className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-accent/90 transition-colors"
+            href={withBasePath('/login')}
+            className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-text-primary hover:bg-accent/90 transition-colors"
           >
             {t('signInToContinue')}
           </a>
@@ -1121,7 +1253,9 @@ export default function SharePage({
       asset={state.asset}
       permission={state.permission}
       allowDownload={state.allowDownload}
+      appearance={state.appearance}
       branding={state.branding}
+      shareSession={shareSession}
     />
   )
 }

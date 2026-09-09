@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { User, Bell, Shield, Palette, Brush } from 'lucide-react'
+import { User, Bell, Shield, Palette } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -19,7 +19,6 @@ const settingsNavItems: SettingsNavItem[] = [
   { href: '/settings/profile', labelKey: 'profile', icon: User },
   { href: '/settings/appearance', labelKey: 'appearance', icon: Palette },
   { href: '/settings/notifications', labelKey: 'notifications', icon: Bell },
-  { href: '/settings/branding', labelKey: 'branding', icon: Brush, adminOnly: true },
   { href: '/settings/admin', labelKey: 'admin', icon: Shield, adminOnly: true },
 ]
 
@@ -39,7 +38,6 @@ export default function SettingsLayout({
     profile: tn('profile'),
     appearance: ta('title'),
     notifications: tl('notifications'),
-    branding: t('branding'),
     admin: t('admin'),
   }
 

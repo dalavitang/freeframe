@@ -31,6 +31,7 @@ FreeFrame gives production houses and creative teams a self-hosted platform for 
 - **Guest commenting** via share links (no account required)
 - **Due date tracking** with email reminders
 - **Real-time updates** via Server-Sent Events
+- **White-label it completely** — your workspace name, logos, favicon and accent colour across the app, share links and emails; the "Powered by FreeFrame" badge switches off
 - **Self-hosted** with Docker Compose — runs on any server or cloud VM
 
 ### Compare any two versions
@@ -47,6 +48,8 @@ Put two cuts or revisions on screen at once and see exactly what changed. Video 
 
 Export a version's timecoded comments as timeline markers your editor can import — DaVinci Resolve (marker EDL), Final Cut Pro (FCPXML), Premiere Pro (XML), or CSV — so notes land on the exact frame back in the timeline.
 
+See [Export comments to an NLE](docs/comment-export.md) for the export workflow, format choices, and frame-rate troubleshooting.
+
 <p align="center">
   <img src="docs/images/comment-export.png" alt="Export comments menu — DaVinci Resolve (EDL), Final Cut Pro (FCPXML), Premiere Pro (XML), and CSV" width="480">
 </p>
@@ -58,6 +61,18 @@ Send a link; clients review and comment without signing up. You stay in control 
 | Client view (no login) | Your share-link controls |
 |---|---|
 | ![Public share link — clients browse assets and comment without an account](docs/images/share-client-view.png) | ![Share link settings — permissions, passphrase, expiration, watermark](docs/images/share-link-settings.png) |
+
+### Make it yours, not ours
+
+Set your workspace name, logos and accent colour once, and the whole platform follows — sign-in screen, sidebar, browser tab, share links, and the emails your clients receive. Switch off the "Powered by FreeFrame" badge (left on in the shots below) and nothing identifies the software your studio runs on.
+
+![A branded sign-in screen — the studio's own logo, workspace name and accent colour throughout](docs/images/branding-login.png)
+
+A live preview shows the app, the sign-in screen and an email side by side with the controls, so you can see what a change does before saving it.
+
+| Live preview of the branded app | The controls |
+|---|---|
+| ![Settings → Branding preview — a faithful mock of the app shell carrying the studio's logo, name and accent](docs/images/branding-preview.png) | ![Settings → Branding — workspace name, accent colour picker, and light and dark logo slots](docs/images/branding-settings.png) |
 
 ## Quick Start (Development)
 
@@ -184,6 +199,7 @@ For the full guide including **SSL setup**, **bring-your-own infrastructure** (e
 |-------|-------------|
 | [Production Deployment](docs/deployment.md) | SSL, bring-your-own infra, scaling, troubleshooting |
 | [Architecture](docs/architecture.md) | System design, data flow, media pipeline, permissions |
+| [Export comments to an NLE](docs/comment-export.md) | Export review notes for Resolve, Final Cut Pro, Premiere Pro, or CSV |
 | [Contributing](docs/contributing.md) | Dev setup, testing, code style, PR process |
 | [Environment Variables](.env.example) | Full config reference with comments |
 

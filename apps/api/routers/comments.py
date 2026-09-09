@@ -13,6 +13,7 @@ from ..config import settings
 from ..database import get_db
 from ..middleware.auth import get_current_user, get_optional_user
 from ..middleware.share_auth import get_share_link
+from ..services import event_service
 from ..models.asset import Asset, AssetType, AssetVersion, MediaFile, ProcessingStatus
 from ..models.project import ProjectMember, ProjectRole
 from ..models.comment import Annotation, Comment, CommentAttachment, CommentReaction
@@ -71,7 +72,16 @@ def _get_comment(db: Session, comment_id: uuid.UUID) -> Comment:
 
 
 def _build_attachment_response(attachment: CommentAttachment) -> AttachmentResponse:
-    url = s3_service.generate_presigned_get_url(attachment.s3_key, expires_in=3600)
+    # Pass download_filename so S3 returns Content-Disposition: attachment
+    # and the browser downloads instead of rendering. Without it an
+    # attacker who uploads an attachment with content_type=text/html gets
+    # a URL the browser renders as HTML — a stored-XSS surface on the S3
+    # origin.
+    url = s3_service.generate_presigned_get_url(
+        attachment.s3_key,
+        expires_in=3600,
+        download_filename=attachment.original_filename or "attachment",
+    )
     return AttachmentResponse(
         id=attachment.id,
         file_name=attachment.original_filename,
@@ -390,6 +400,13 @@ def create_comment(
 
     db.commit()
     db.refresh(comment)
+
+    event_service.publish_sync(asset.project_id, "new_comment", {
+        "asset_id": str(asset_id),
+        "comment_id": str(comment.id),
+        "author": current_user.name,
+    })
+
     return _build_comment_response(comment, db, current_user_id=current_user.id)
 
 
@@ -432,6 +449,13 @@ def reply_to_comment(
 
     db.commit()
     db.refresh(reply)
+
+    event_service.publish_sync(asset.project_id, "new_comment", {
+        "asset_id": str(asset_id),
+        "comment_id": str(reply.id),
+        "author": current_user.name,
+    })
+
     return _build_comment_response(reply, db, current_user_id=current_user.id)
 
 
@@ -501,6 +525,14 @@ def resolve_comment(
     comment.resolved = not comment.resolved
     db.commit()
     db.refresh(comment)
+
+    # This endpoint toggles, so send the resulting state rather than implying
+    # "resolved" — a client that assumed that would get it backwards on unresolve.
+    event_service.publish_sync(asset.project_id, "comment_resolved", {
+        "comment_id": str(comment.id),
+        "resolved": comment.resolved,
+    })
+
     return _build_comment_response(comment, db, current_user_id=current_user.id)
 
 
@@ -521,19 +553,24 @@ def create_attachment(
     asset = _get_asset(db, comment.asset_id)
     require_asset_access(db, asset, current_user)
 
-    # Generate S3 key
-    key = f"comment-attachments/{comment_id}/{uuid.uuid4()}/{body.file_name}"
+    # Sanitize the filename so it cannot break the S3 key or the presigned
+    # URL. S3 flattens path separators, so this isn't traversal — but
+    # control characters, '?', '#', and whitespace break keys and presigned
+    # signatures. Keep the original filename on the attachment record for
+    # the Content-Disposition download name.
+    import re as _re
+    safe_name = _re.sub(r"[^A-Za-z0-9._-]+", "_", body.file_name or "attachment").strip("._") or "attachment"
 
-    # Generate presigned PUT URL
-    s3 = s3_service.get_s3_client()
-    upload_url = s3.generate_presigned_url(
-        "put_object",
-        Params={
-            "Bucket": settings.s3_bucket,
-            "Key": key,
-            "ContentType": body.content_type,
-        },
-        ExpiresIn=3600,
+    # Generate S3 key
+    key = f"comment-attachments/{comment_id}/{uuid.uuid4()}/{safe_name}"
+
+    # Generate presigned PUT URL via the public-endpoint helper so browser
+    # uploads reach S3/MinIO. Calling get_s3_client() directly used the
+    # internal S3_ENDPOINT (http://localhost:9000 in MinIO deployments),
+    # unreachable from the browser and leaking the internal endpoint to
+    # every API caller.
+    upload_url = s3_service.generate_presigned_put_url(
+        key, content_type=body.content_type, expires_in=3600
     )
 
     # Save attachment record
@@ -965,5 +1002,13 @@ def guest_comment(
     )
     db.add(activity)
     db.commit()
+
+    # Guests comment through a share link, but the live update belongs to the
+    # project team watching the asset, so it goes on the same project channel.
+    event_service.publish_sync(asset.project_id, "new_comment", {
+        "asset_id": str(asset.id),
+        "comment_id": str(comment.id),
+        "author": actor_name or "Guest",
+    })
 
     return _build_comment_response(comment, db)

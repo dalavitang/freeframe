@@ -74,6 +74,14 @@ export function CompareVersionSelect({ versions, value, onChange, accentClass, e
                 title={onOtherSide ? t('shownOnOtherSide') : undefined}
                 onClick={() => {
                   if (blocked) return
+                  // Re-picking the version already shown is a no-op, not a
+                  // switch. Firing onChange would tell the caller the pair
+                  // changed when it did not, and callers act on that (the
+                  // compare overlay drops calibrated sync offsets).
+                  if (v.id === value) {
+                    setOpen(false)
+                    return
+                  }
                   onChange(v)
                   setOpen(false)
                 }}

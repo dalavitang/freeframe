@@ -158,7 +158,7 @@
     "errorId": "错误 ID：{id}",
     "tryAgain": "重试"
   },
-"badge": {
+  "badge": {
     "draft": "草稿",
     "inReview": "审阅中",
     "approved": "已批准",
@@ -258,7 +258,7 @@
     "addFailed": "添加成员失败",
     "srDescription": "添加或管理项目成员"
   },
-"projectSettings": {
+  "projectSettings": {
     "title": "项目设置",
     "posterAlt": "封面",
     "projectNamePlaceholder": "项目名称",
@@ -481,14 +481,14 @@
       "somethingWentWrong": "出错了，请重试。",
       "credentialsRequired": "请输入邮箱和密码",
       "invalidCredentials": "邮箱或密码不正确",
-      "classicTitle": "使用密码登录",
+      "classicTitle": "登录",
       "classicDescription": "请输入邮箱和密码以继续。",
       "emailLabel": "邮箱地址",
       "emailPlaceholder": "you@example.com",
       "passwordLabel": "密码",
       "classicPasswordPlaceholder": "您的密码",
       "signIn": "登录",
-      "backToMagicLink": "返回使用魔法链接",
+      "backToMagicLink": "改用魔法链接登录",
       "createPasswordTitle": "设置您的密码",
       "createPasswordDescription": "设置密码以保护您今后的账户安全。",
       "passwordMinPlaceholder": "至少 8 个字符",
@@ -499,10 +499,10 @@
       "codeSentTo": "我们已将 6 位验证码发送至 <highlight>{email}</highlight>",
       "verifyCode": "验证",
       "useDifferentEmail": "使用其他邮箱",
-      "signInTitle": "登录 FreeFrame",
+      "signInTitle": "验证码登录",
       "magicLinkDescription": "输入您的邮箱，我们将为您发送登录验证码。",
       "sendMagicCode": "发送验证码",
-      "signInWithPassword": "改用密码登录"
+      "signInWithPassword": "返回密码登录"
     },
     "setup": {
       "emailRequired": "请输入邮箱",
@@ -736,7 +736,7 @@
   },
   "share": {
     "passwordRequiredTitle": "需要密码",
-    "passwordRequiredDesc": "输入密码以访问此链接",
+    "passwordRequiredDesc": "需要密码才能访问此链接",
     "enterPasswordPlaceholder": "输入密码…",
     "accessLink": "访问链接",
     "linkExpiredTitle": "链接已过期",
@@ -1096,7 +1096,10 @@
     "reactivateFailed": "重新启用用户失败",
     "roleUpdateFailed": "更新用户角色失败",
     "emptyTitle": "暂无用户",
-    "emptyDescription": "用户注册或被邀请后将显示在这里。"
+    "emptyDescription": "用户注册或被邀请后将显示在这里。",
+    "subtitleInstance": "配置此实例",
+    "subtitleBranding": "让此实例呈现您的风格",
+    "tabBranding": "品牌"
   },
   "instanceSettings": {
     "title": "实例存储",

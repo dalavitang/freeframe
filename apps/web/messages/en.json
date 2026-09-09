@@ -481,14 +481,14 @@
       "somethingWentWrong": "Something went wrong. Please try again.",
       "credentialsRequired": "Email and password are required",
       "invalidCredentials": "Invalid email or password",
-      "classicTitle": "Sign in with password",
+      "classicTitle": "Sign in",
       "classicDescription": "Enter your email and password to continue.",
       "emailLabel": "Email address",
       "emailPlaceholder": "you@example.com",
       "passwordLabel": "Password",
       "classicPasswordPlaceholder": "Your password",
       "signIn": "Sign in",
-      "backToMagicLink": "Back to magic link",
+      "backToMagicLink": "Sign in with magic code instead",
       "createPasswordTitle": "Create your password",
       "createPasswordDescription": "Set a password to secure your account going forward.",
       "passwordMinPlaceholder": "Min. 8 characters",
@@ -499,10 +499,10 @@
       "codeSentTo": "We sent a 6-digit code to <highlight>{email}</highlight>",
       "verifyCode": "Verify code",
       "useDifferentEmail": "Use a different email",
-      "signInTitle": "Sign in to FreeFrame",
+      "signInTitle": "Magic code sign-in",
       "magicLinkDescription": "Enter your email and we''ll send you a sign-in code.",
       "sendMagicCode": "Send magic code",
-      "signInWithPassword": "Sign in with password instead"
+      "signInWithPassword": "Back to password sign-in"
     },
     "setup": {
       "emailRequired": "Email is required",
@@ -736,7 +736,7 @@
   },
   "share": {
     "passwordRequiredTitle": "Password required",
-    "passwordRequiredDesc": "Enter the password to access this link",
+    "passwordRequiredDesc": "Password required to access this link",
     "enterPasswordPlaceholder": "Enter password…",
     "accessLink": "Access link",
     "linkExpiredTitle": "Link expired",
@@ -1096,7 +1096,10 @@
     "reactivateFailed": "Failed to reactivate user",
     "roleUpdateFailed": "Failed to update user role",
     "emptyTitle": "No users",
-    "emptyDescription": "Users will appear here once they register or are invited."
+    "emptyDescription": "Users will appear here once they register or are invited.",
+    "subtitleInstance": "Configure this instance",
+    "subtitleBranding": "Make this instance look like yours",
+    "tabBranding": "Branding"
   },
   "instanceSettings": {
     "title": "Instance storage",

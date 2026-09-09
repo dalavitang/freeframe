@@ -67,7 +67,7 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
     <div className="border-t border-border bg-bg-primary px-4 py-4">
       <div className="mb-3 flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-muted">
-          <User className="h-3.5 w-3.5 text-accent" />
+          <User className="h-3.5 w-3.5 text-text-primary" />
         </div>
         <p className="text-sm font-medium text-text-primary">{t('guestIdentityTitle')}</p>
       </div>
@@ -106,6 +106,8 @@ function IdentityForm({ onIdentified }: IdentityFormProps) {
 // ─── Guest Comment Input ───────────────────────────────────────────────────────
 
 interface GuestCommentInputProps {
+  /** Session token from password verification (POST /share/{token}/verify) */
+  shareSession?: string | null
   /** The share token for this public link */
   token: string
   /** Called after a comment is successfully submitted */
@@ -113,7 +115,7 @@ interface GuestCommentInputProps {
   className?: string
 }
 
-export function GuestCommentInput({ token, onCommentPosted, className }: GuestCommentInputProps) {
+export function GuestCommentInput({ token, onCommentPosted, className, shareSession }: GuestCommentInputProps) {
   const t = useTranslations('comments')
   const [identity, setIdentity] = React.useState<GuestIdentity | null>(null)
   const [body, setBody] = React.useState('')
@@ -143,7 +145,8 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const response = await fetch(`${API_URL}/share/${token}/comment`, {
+      const sp = shareSession ? `&share_session=${encodeURIComponent(shareSession)}` : ''
+      const response = await fetch(`${API_URL}/share/${token}/comment?_=1${sp}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -185,7 +188,7 @@ export function GuestCommentInput({ token, onCommentPosted, className }: GuestCo
       {/* Identity badge */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-xs text-text-secondary">
-          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-muted text-accent text-2xs font-medium">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-muted text-text-primary text-2xs font-medium">
             {identity.name.charAt(0).toUpperCase()}
           </div>
           <span>

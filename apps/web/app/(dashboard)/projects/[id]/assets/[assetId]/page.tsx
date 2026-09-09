@@ -36,6 +36,7 @@ import {
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
+import { PoweredByBadge } from '@/components/shared/powered-by-badge'
 import { usePageTitle } from '@/hooks/use-page-title'
 import type { Project, AssetResponse, ProjectMember, FolderTreeNode } from '@/types'
 
@@ -450,6 +451,10 @@ function ReviewScreenInner({ projectId }: { projectId: string }) {
           >
             <Columns2 className="h-4 w-4" />
           </button>
+        </div>
+        {/* Center: Powered by FreeFrame */}
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <PoweredByBadge showIcon />
         </div>
       </div>
 

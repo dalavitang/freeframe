@@ -119,7 +119,7 @@ export function Header({ onSearchOpen }: HeaderProps) {
             className={cn(
               'flex h-7 w-7 items-center justify-center rounded-md transition-colors',
               rightPanelOpen
-                ? 'text-accent bg-accent-muted'
+                ? 'text-text-primary bg-accent-muted'
                 : 'text-text-tertiary hover:bg-bg-hover hover:text-text-primary',
             )}
             title={rightPanelOpen ? t('hidePanel') : t('showPanel')}

@@ -83,7 +83,10 @@ class Settings(BaseSettings):
     # If mail_provider is "smtp", uses standard SMTP with smtp_* settings
     mail_provider: str = "ses"  # "ses" or "smtp"
     mail_from_address: str = "noreply@example.com"
-    mail_from_name: str = "FreeFrame"
+    # Blank means "follow the instance branding org name" (see
+    # services/branding_service.resolve_org_name). Set it to pin a fixed
+    # display name regardless of branding.
+    mail_from_name: str = ""
     
     # AWS SES settings
     aws_mail_access_key_id: str | None = None
@@ -117,5 +120,22 @@ class Settings(BaseSettings):
                     f"leave S3_ENDPOINT unset."
                 )
         return self
+
+    @property
+    def frontend_origin(self) -> str:
+        """`frontend_url` reduced to a bare `scheme://host[:port]` origin.
+
+        A browser's Origin header never carries a path, so a sub-path
+        deployment (FRONTEND_URL=https://host/freeframe) has to be matched
+        against https://host — using the raw URL means no CORS check ever
+        matches. Falls back to the configured value when it isn't parseable
+        as an absolute URL.
+        """
+        from urllib.parse import urlparse
+        raw = (self.frontend_url or "").strip()
+        parsed = urlparse(raw)
+        if not parsed.scheme or not parsed.netloc:
+            return raw
+        return f"{parsed.scheme}://{parsed.netloc}"
 
 settings = Settings()

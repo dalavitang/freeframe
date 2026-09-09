@@ -201,13 +201,15 @@ Uploads go **directly from the browser to your bucket** via presigned URLs, so t
 {
   "CORSRules": [{
     "AllowedOrigins": ["https://your-freeframe-domain.example"],
-    "AllowedMethods": ["GET", "PUT", "POST", "HEAD", "DELETE"],
-    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Content-MD5", "x-amz-content-sha256", "x-amz-date", "x-amz-decoded-content-length"],
     "ExposeHeaders": ["ETag"],
     "MaxAgeSeconds": 3000
   }]
 }
 ```
+
+`DELETE` is intentionally absent — FreeFrame has no presigned-DELETE flow, and the browser never needs it against the bucket. The `AllowedHeaders` list above is exactly what browser uploads and HLS segment fetches send; `["*"]` also works on most backends, but the list is sufficient and is what FreeFrame's automatic startup config now applies.
 
 If you allow **more than one origin**, give each origin its own rule rather than listing them all in one. Some backends (Garage) answer a multi-origin rule by joining every entry into a single comma-separated `Access-Control-Allow-Origin` header, which browsers reject — every upload and HLS segment fetch then fails CORS. FreeFrame's automatic startup config already emits one rule per origin.
 
@@ -225,7 +227,8 @@ Configure in `.env.prod`:
 ```
 MAIL_PROVIDER=smtp
 MAIL_FROM_ADDRESS=noreply@your-domain.com
-MAIL_FROM_NAME=FreeFrame
+# Blank follows the instance branding name; set it to pin a fixed one.
+MAIL_FROM_NAME=
 SMTP_HOST=smtp.mailgun.org
 SMTP_PORT=587
 SMTP_USER=your-smtp-user
@@ -237,7 +240,8 @@ SMTP_USE_TLS=true
 ```
 MAIL_PROVIDER=ses
 MAIL_FROM_ADDRESS=noreply@your-domain.com
-MAIL_FROM_NAME=FreeFrame
+# Blank follows the instance branding name; set it to pin a fixed one.
+MAIL_FROM_NAME=
 AWS_MAIL_ACCESS_KEY_ID=YOUR_KEY
 AWS_MAIL_SECRET_ACCESS_KEY=YOUR_SECRET
 AWS_MAIL_REGION=us-east-1
@@ -266,6 +270,9 @@ All environment variables are documented in [`.env.example`](../.env.example). K
 | `EMAIL_CONCURRENCY` | Parallel email jobs | `2` |
 | `MAINTENANCE_CONCURRENCY` | Parallel housekeeping jobs | `1` |
 | `NEXT_PUBLIC_UPLOAD_CONCURRENCY` | Upload parts in flight per file (browser) | `5` |
+| `TRANSCODER_PIPELINE` | GPU backend: `Auto`, `NVIDIA`, `Intel`, or `Software` | `Auto` |
+| `TRANSCODER_OUTPUT` | Output codec: `h264_8` (broad compatibility) or `h265_10` (HEVC 10-bit) | `h264_8` |
+| `TRANSCODER_HDR` | `convert` (tone-map HDR to SDR) or `preserve` (keep HDR tags) | `convert` |
 
 ---
 
@@ -288,6 +295,24 @@ Video transcoding is CPU-intensive. Adjust `TRANSCODING_CONCURRENCY` based on yo
 | 2 cores | 1-2 |
 | 4 cores | 2-3 |
 | 8+ cores | 4-6 |
+
+### Hardware-Accelerated Transcoding (optional)
+
+FreeFrame can use an NVIDIA (NVENC) or Intel (VAAPI) GPU to transcode faster, and
+automatically falls back to software (CPU) transcoding if no GPU is present or a
+hardware attempt fails at runtime. This is entirely opt-in — the default build and
+default runtime behavior are unchanged.
+
+To enable it:
+1. Build the API image with `--build-arg ENABLE_HWACCEL=true` (Intel/VAAPI only —
+   NVENC needs no extra packages in the image, just the host driver).
+2. Give the `worker` service access to the GPU: pass through `/dev/dri` for VAAPI,
+   or install `nvidia-container-toolkit` and add a GPU reservation for NVENC.
+3. Set `TRANSCODER_PIPELINE` to `NVIDIA`, `Intel`, or leave it as `Auto` to detect
+   automatically.
+
+> Compose-file examples for GPU device passthrough aren't included yet — that's a
+> known follow-up.
 
 ### Email Workers
 

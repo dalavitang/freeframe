@@ -10,10 +10,13 @@ from ..middleware.auth import get_current_user
 from ..services.auth_service import hash_password, get_user_by_email
 from ..tasks.email_tasks import send_invite_email
 from ..tasks.celery_app import send_task_safe
+from ..models.instance_branding import InstanceBranding
 from ..config import settings
 from ..services import s3_service
+from ..services.search import escape_like
 
 router = APIRouter(prefix="/users", tags=["users"])
+
 
 @router.get("", response_model=list[UserResponse])
 def get_users_batch(
@@ -39,7 +42,7 @@ def search_users(
     current_user: User = Depends(get_current_user),
 ):
     """Search users by name or email. Returns up to 10 matching users."""
-    pattern = f"%{q}%"
+    pattern = f"%{escape_like(q)}%"
     users = db.query(User).filter(
         User.deleted_at.is_(None),
         (User.name.ilike(pattern) | User.email.ilike(pattern)),
@@ -74,7 +77,9 @@ def invite_user(body: InviteRequest, db: Session = Depends(get_db), current_user
     
     # Send invite email
     invite_url = f"{settings.frontend_url}/invite/{invite_token}"
-    send_task_safe(send_invite_email, user.email, current_user.name or "Admin", "FreeFrame", invite_url)
+    branding = db.query(InstanceBranding).first()
+    org_name = branding.org_name if branding else "FreeFrame"
+    send_task_safe(send_invite_email, user.email, current_user.name or "Admin", org_name, invite_url)
     
     return user
 
@@ -93,6 +98,7 @@ def update_user(user_id: uuid.UUID, body: UpdateProfileRequest, db: Session = De
     db.commit()
     db.refresh(user)
     return user
+
 
 
 @router.post("/{user_id}/avatar-upload", status_code=status.HTTP_201_CREATED)

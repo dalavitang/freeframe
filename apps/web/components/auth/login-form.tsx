@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
 import { api, ApiError } from '@/lib/api'
 import { setTokens } from '@/lib/auth'
+import { useTranslations } from 'next-intl'
 import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ type Step = 'email' | 'code' | 'password' | 'classic'
 export function LoginForm() {
   const router = useRouter()
   const t = useTranslations('auth.login')
-  const [step, setStep] = useState<Step>('classic')
+  const [step, setStep] = useState<Step>('email')
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState('')
   const [code, setCode] = useState(['', '', '', '', '', ''])
@@ -40,7 +40,7 @@ export function LoginForm() {
     }
   }, [step])
 
-  // ─── Step 1: Send magic code ──────────────────────────────────────────────
+  // ─── Step 1: {t('sendMagicCode')} ──────────────────────────────────────────────
 
   async function handleSendCode(e: React.FormEvent) {
     e.preventDefault()
@@ -71,7 +71,7 @@ export function LoginForm() {
     }
   }
 
-  // ─── Step 2: Verify code ─────────────────────────────────────────────────
+  // ─── Step 2: {t('verifyCode')} ─────────────────────────────────────────────────
 
   function handleCodeChange(index: number, value: string) {
     const digit = value.replace(/\D/g, '').slice(-1)
@@ -279,7 +279,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => { setStep('email'); setClassicError('') }}
-            className="text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+            className="text-base text-text-tertiary hover:text-text-secondary transition-colors"
           >
             {t('backToMagicLink')}
           </button>
@@ -381,7 +381,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => { setStep('email'); setCode(['', '', '', '', '', '']); setCodeError('') }}
-            className="block w-full text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+            className="block w-full text-base text-text-tertiary hover:text-text-secondary transition-colors"
           >
             {t('useDifferentEmail')}
           </button>
@@ -390,7 +390,7 @@ export function LoginForm() {
     )
   }
 
-  // Step 1: Email
+  // Step: Email (magic code entry)
   return (
     <div className="animate-slide-up">
       <div className="mb-8">
@@ -426,7 +426,7 @@ export function LoginForm() {
         <button
           type="button"
           onClick={() => { setStep('classic'); setGeneralError('') }}
-          className="text-sm text-text-tertiary hover:text-text-secondary transition-colors"
+          className="text-base text-text-tertiary hover:text-text-secondary transition-colors"
         >
           {t('signInWithPassword')}
         </button>
