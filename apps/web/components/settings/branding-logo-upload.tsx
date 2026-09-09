@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { Upload, X, Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 
 import { api } from '@/lib/api'
@@ -54,6 +55,8 @@ export function BrandingLogoUpload({
   onUpload,
   onRemove,
 }: BrandingLogoUploadProps) {
+  const t = useTranslations('brandingTab')
+  const tc = useTranslations('common')
   const fileInputRef = React.useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -66,7 +69,7 @@ export function BrandingLogoUpload({
     setError(null)
 
     if (file.size > 2 * 1024 * 1024) {
-      setError('File must be under 2 MB')
+      setError(t('fileTooLarge'))
       return
     }
 
@@ -87,7 +90,7 @@ export function BrandingLogoUpload({
         body: file,
         headers: { 'Content-Type': contentType },
       })
-      if (!uploadRes.ok) throw new Error('Failed to upload file')
+      if (!uploadRes.ok) throw new Error(t('uploadFailedFile'))
 
       // Step 3: Update branding with new key
       const updateBody: Record<string, string> = {}
@@ -107,7 +110,7 @@ export function BrandingLogoUpload({
         onUpload(logoUrl, s3Key)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      setError(err instanceof Error ? err.message : t('uploadFailed'))
     } finally {
       setUploading(false)
     }
@@ -117,14 +120,14 @@ export function BrandingLogoUpload({
     setError(null)
     const type = TYPE_MAP[slotKey]
     if (!type) {
-      setError('Unknown logo type')
+      setError(t('unknownLogoType'))
       return
     }
     try {
       await api.delete(`/instance/branding/logo/${type}`)
       onRemove()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Reset failed')
+      setError(err instanceof Error ? err.message : t('resetFailed'))
     }
   }
 
@@ -145,7 +148,7 @@ export function BrandingLogoUpload({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={defaultUrl || `/logo-icon.png`}
-            alt="Default"
+            alt={t('defaultLogoAlt')}
             className="h-full w-full object-contain p-1 opacity-40"
           />
         )}
@@ -179,7 +182,7 @@ export function BrandingLogoUpload({
             ) : (
               <Upload className="h-3.5 w-3.5" />
             )}
-            {hasLogo ? 'Replace' : 'Upload'}
+            {hasLogo ? t('replace') : t('upload')}
           </Button>
           {hasLogo && (
             <Button
@@ -190,13 +193,13 @@ export function BrandingLogoUpload({
               className="text-status-error hover:text-status-error hover:bg-status-error/10"
             >
               <X className="h-3.5 w-3.5" />
-              Remove
+              {tc('remove')}
             </Button>
           )}
         </div>
 
         <p className="text-2xs text-text-tertiary mt-2">
-          {acceptedFormats.join(' · ')} · {minResolution} · max 2 MB
+          {acceptedFormats.join(' · ')} · {minResolution} · {t('maxSize')}
         </p>
       </div>
     </div>
