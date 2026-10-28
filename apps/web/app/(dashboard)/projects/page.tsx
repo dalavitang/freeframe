@@ -1,32 +1,44 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import * as Dialog from "@radix-ui/react-dialog";
 import {
   Plus,
-  LayoutGrid,
-  List,
   FolderOpen,
   X,
   Users,
   Share2,
   Globe,
 } from "lucide-react";
-import { useTranslations, useLocale } from "next-intl";
-import { cn } from "@/lib/utils";
+import { cn, formatBytes } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProjectCard } from "@/components/projects/project-card";
+import { useProjectMenu } from "@/components/projects/menus/project-menu";
+import { ContextMenuArea } from "@/components/shared/item-menu";
+import { ProjectPoster } from "@/components/projects/project-poster";
+import { ProjectsAppearancePopover } from "@/components/projects/projects-appearance-popover";
+import { ProjectsSortPopover } from "@/components/projects/projects-sort-popover";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useAuthStore } from "@/stores/auth-store";
+import { useProjectsViewStore } from "@/stores/projects-view-store";
+import type { ViewLayout, CardSize } from "@/stores/view-store";
+import { sortProjects } from "@/lib/project-sort";
 import { usePageTitle } from "@/hooks/use-page-title";
+import { useProjectsViewReady } from "@/hooks/use-projects-view-ready";
+import { useLocale, useTranslations } from "next-intl";
 import { useFormatters } from "@/hooks/use-formatters";
 import type { Project, ProjectType } from "@/types";
 
-type ViewMode = "grid" | "list";
+const projectGridColsMap: Record<CardSize, string> = {
+  S: "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8",
+  M: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+  L: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+};
 
 interface CreateProjectForm {
   name: string;
@@ -37,15 +49,18 @@ interface CreateProjectForm {
 function ProjectListRow({
   project,
   showRole,
+  isOwner,
 }: {
   project: Project;
   showRole?: boolean;
+  isOwner?: boolean;
 }) {
+  // The card's menu, on right-click: a list row has no ⋯ button.
   const t = useTranslations("projectsPage");
   const tr = useTranslations("roles");
-  const tp = useTranslations("projects");
   const locale = useLocale();
   const { formatBytes } = useFormatters();
+  const { items: menuItems } = useProjectMenu(project, { isOwner });
   const roleName =
     project.role === "owner"
       ? tr("owner")
@@ -58,12 +73,15 @@ function ProjectListRow({
             : t("member");
 
   return (
-    <a
+    <>
+    <ContextMenuArea items={menuItems}>
+    <Link
       href={`/projects/${project.id}`}
       className="flex items-center gap-4 px-4 py-3 hover:bg-bg-hover transition-colors border-b border-border last:border-b-0"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500">
-        <FolderOpen className="h-4 w-4 text-white" />
+      {/* The card's picture, so a project looks the same in both views. */}
+      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg">
+        <ProjectPoster project={project} />
       </div>
       <div className="flex-1 min-w-0">
         <span className="text-sm font-medium text-text-primary truncate block">
@@ -71,10 +89,7 @@ function ProjectListRow({
         </span>
         <span className="text-2xs text-text-tertiary">
           {(project.asset_count ?? 0) > 0
-            ? tp("itemCountWithSize", {
-                count: project.asset_count ?? 0,
-                size: formatBytes(project.storage_bytes ?? 0),
-              })
+            ? t("projectCount", { count: project.asset_count ?? 0 }) + " · " + formatBytes(project.storage_bytes ?? 0)
             : t("noAssetsYet")}
         </span>
       </div>
@@ -105,7 +120,9 @@ function ProjectListRow({
           {roleName}
         </span>
       )}
-    </a>
+    </Link>
+    </ContextMenuArea>
+    </>
   );
 }
 
@@ -114,26 +131,27 @@ function ProjectSection({
   icon,
   projects,
   viewMode,
+  cardSize,
+  showCardInfo,
   emptyMessage,
   onNewProject,
   showNewButton,
   showRole,
   userId,
-  onMutate,
 }: {
   title: string;
   icon?: React.ReactNode;
   projects: Project[];
-  viewMode: ViewMode;
+  viewMode: ViewLayout;
+  cardSize: CardSize;
+  showCardInfo: boolean;
   emptyMessage: string;
   onNewProject?: () => void;
   showNewButton?: boolean;
   showRole?: boolean;
   userId?: string;
-  onMutate?: () => void;
 }) {
   const t = useTranslations("projectsPage");
-
   if (projects.length === 0 && !showNewButton) {
     return null;
   }
@@ -166,14 +184,14 @@ function ProjectSection({
           </div>
         </button>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className={cn("grid gap-4", projectGridColsMap[cardSize])}>
           {projects.map((project) => (
             <ProjectCard
               key={project.id}
               project={project}
               showRole={showRole}
               isOwner={!!userId && project.created_by === userId}
-              onMutate={onMutate}
+              showInfo={showCardInfo}
             />
           ))}
           {showNewButton && onNewProject && (
@@ -197,6 +215,7 @@ function ProjectSection({
               key={project.id}
               project={project}
               showRole={showRole}
+              isOwner={!!userId && project.created_by === userId}
             />
           ))}
           {showNewButton && onNewProject && (
@@ -207,9 +226,7 @@ function ProjectSection({
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-border text-text-tertiary">
                 <Plus className="h-3.5 w-3.5" />
               </div>
-              <span className="text-sm text-text-secondary">
-                {t("newProject")}
-              </span>
+              <span className="text-sm text-text-secondary">New Project</span>
             </button>
           )}
         </div>
@@ -220,11 +237,19 @@ function ProjectSection({
 
 export default function ProjectsPage() {
   const t = useTranslations("projectsPage");
-  const tc = useTranslations("common");
   usePageTitle(t("title"));
   const router = useRouter();
   const { user } = useAuthStore();
-  const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
+  const {
+    layout: viewMode,
+    cardSize,
+    showCardInfo,
+    sortKey,
+    sortDirection,
+  } = useProjectsViewStore();
+  // Until the user's appearance is known, draw no projects: anything drawn
+  // at the defaults would jump to their settings a moment later.
+  const viewReady = useProjectsViewReady();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [isCreating, setIsCreating] = React.useState(false);
   const [formError, setFormError] = React.useState("");
@@ -241,22 +266,27 @@ export default function ProjectsPage() {
     mutate,
   } = useSWR<Project[]>("/projects", () => api.get<Project[]>("/projects"));
 
+  const sortedProjects = React.useMemo(
+    () => sortProjects(projects ?? [], sortKey, sortDirection),
+    [projects, sortKey, sortDirection],
+  );
+
   const myProjects = React.useMemo(
-    () => (projects ?? []).filter((p) => p.created_by === user?.id),
-    [projects, user?.id],
+    () => sortedProjects.filter((p) => p.created_by === user?.id),
+    [sortedProjects, user?.id],
   );
 
   const sharedProjects = React.useMemo(
-    () => (projects ?? []).filter((p) => p.created_by !== user?.id && p.role),
-    [projects, user?.id],
+    () => sortedProjects.filter((p) => p.created_by !== user?.id && p.role),
+    [sortedProjects, user?.id],
   );
 
   const publicProjects = React.useMemo(
     () =>
-      (projects ?? []).filter(
+      sortedProjects.filter(
         (p) => p.is_public && p.created_by !== user?.id && !p.role,
       ),
-    [projects, user?.id],
+    [sortedProjects, user?.id],
   );
 
   const resetForm = () => {
@@ -294,46 +324,34 @@ export default function ProjectsPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Title, view controls, New Project on one line; on a phone the
+          view controls drop to their own line under the title. The title
+          sits in an h-8 row so it centers with the h-8 buttons. */}
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">
+          <h1 className="flex h-8 items-center text-lg font-semibold text-text-primary">
             {t("title")}
           </h1>
           {projects && projects.length > 0 && (
             <p className="mt-0.5 text-sm text-text-tertiary">
-              {t("projectCount", { count: projects.length })}
+              {projects.length} project{projects.length !== 1 ? "s" : ""}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-lg border border-border overflow-hidden">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={cn(
-                "p-1.5 transition-colors",
-                viewMode === "grid"
-                  ? "bg-accent-muted text-text-primary"
-                  : "text-text-tertiary hover:bg-bg-hover hover:text-text-secondary",
-              )}
-              title={t("gridView")}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "p-1.5 transition-colors",
-                viewMode === "list"
-                  ? "bg-accent-muted text-text-primary"
-                  : "text-text-tertiary hover:bg-bg-hover hover:text-text-secondary",
-              )}
-              title={t("listView")}
-            >
-              <List className="h-4 w-4" />
-            </button>
-          </div>
+        <div
+          className={cn(
+            "order-last flex w-full items-center gap-1 sm:order-none sm:w-auto",
+            // Keeps its space, so nothing shifts when the real labels appear.
+            !viewReady && "invisible",
+          )}
+        >
+          <ProjectsAppearancePopover />
+          <div className="h-4 w-px bg-border mx-0.5" />
+          <ProjectsSortPopover />
+        </div>
 
+        <div className="ml-auto flex items-center gap-2">
           <Dialog.Root
             open={dialogOpen}
             onOpenChange={(open) => {
@@ -350,22 +368,22 @@ export default function ProjectsPage() {
 
             <Dialog.Portal>
               <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-              <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-secondary p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+              <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] rounded-xl border border-border bg-bg-secondary p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
                 <Dialog.Close className="absolute right-4 top-4 text-text-tertiary hover:text-text-primary transition-colors">
                   <X className="h-4 w-4" />
                 </Dialog.Close>
 
                 <Dialog.Title className="text-base font-semibold text-text-primary">
-                  {t("createTitle")}
+                  {t("newProject")}
                 </Dialog.Title>
                 <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                  {t("createDescription")}
+                  Create a new project to organize your assets.
                 </Dialog.Description>
 
                 <form onSubmit={handleCreate} className="mt-5 space-y-4">
                   <Input
                     label={t("projectName")}
-                    placeholder={t("projectNamePlaceholder")}
+                    placeholder="e.g. Brand Campaign 2025"
                     value={form.name}
                     onChange={(e) =>
                       setForm((f) => ({ ...f, name: e.target.value }))
@@ -379,7 +397,7 @@ export default function ProjectsPage() {
                     </label>
                     <textarea
                       rows={2}
-                      placeholder={t("descriptionPlaceholder")}
+                      placeholder="Optional description..."
                       value={form.description}
                       onChange={(e) =>
                         setForm((f) => ({ ...f, description: e.target.value }))
@@ -395,7 +413,7 @@ export default function ProjectsPage() {
                   <div className="flex justify-end gap-2 pt-2">
                     <Dialog.Close asChild>
                       <Button type="button" variant="secondary" size="sm">
-                        {tc("cancel")}
+                        {t("cancel")}
                       </Button>
                     </Dialog.Close>
                     <Button type="submit" size="sm" loading={isCreating}>
@@ -410,20 +428,39 @@ export default function ProjectsPage() {
       </div>
 
       {/* Content */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex flex-col rounded-xl overflow-hidden border border-border"
-            >
-              <div className="aspect-square animate-pulse bg-bg-tertiary" />
-              <div className="px-3 py-2.5">
-                <div className="h-3 w-2/3 animate-pulse rounded bg-bg-tertiary" />
+      {!viewReady ? null : isLoading ? (
+        viewMode === "list" ? (
+          <div className="rounded-xl border border-border overflow-hidden bg-bg-secondary">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 px-4 py-3 border-b border-border last:border-b-0"
+              >
+                <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-bg-tertiary" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-1/3 animate-pulse rounded bg-bg-tertiary" />
+                  <div className="h-2.5 w-1/5 animate-pulse rounded bg-bg-tertiary" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className={cn("grid gap-4", projectGridColsMap[cardSize])}>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col rounded-xl overflow-hidden border border-border"
+              >
+                <div className="aspect-square animate-pulse bg-bg-tertiary" />
+                {showCardInfo && (
+                  <div className="px-3 py-2.5">
+                    <div className="h-3 w-2/3 animate-pulse rounded bg-bg-tertiary" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
       ) : !projects || projects.length === 0 ? (
         <div className="rounded-xl border border-border bg-bg-secondary">
           <EmptyState
@@ -443,11 +480,12 @@ export default function ProjectsPage() {
             icon={<FolderOpen className="h-4 w-4 text-text-tertiary" />}
             projects={myProjects}
             viewMode={viewMode}
+            cardSize={cardSize}
+            showCardInfo={showCardInfo}
             emptyMessage={t("myProjectsEmpty")}
             onNewProject={() => setDialogOpen(true)}
             showNewButton
             userId={user?.id}
-            onMutate={() => mutate()}
           />
           {sharedProjects.length > 0 && (
             <ProjectSection
@@ -455,10 +493,11 @@ export default function ProjectsPage() {
               icon={<Share2 className="h-4 w-4 text-text-tertiary" />}
               projects={sharedProjects}
               viewMode={viewMode}
+              cardSize={cardSize}
+              showCardInfo={showCardInfo}
               emptyMessage=""
               showRole
               userId={user?.id}
-              onMutate={() => mutate()}
             />
           )}
           {publicProjects.length > 0 && (
@@ -467,9 +506,10 @@ export default function ProjectsPage() {
               icon={<Globe className="h-4 w-4 text-text-tertiary" />}
               projects={publicProjects}
               viewMode={viewMode}
+              cardSize={cardSize}
+              showCardInfo={showCardInfo}
               emptyMessage=""
               userId={user?.id}
-              onMutate={() => mutate()}
             />
           )}
         </div>

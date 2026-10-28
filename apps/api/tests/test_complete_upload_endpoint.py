@@ -391,6 +391,11 @@ def test_retry_survives_a_storage_blip_as_a_conflict_not_a_crash(
 
     assert resp.status_code == 503
     assert resp.headers["Retry-After"] == "5"
+    assert resp.json()["detail"] == {
+        "code": "storage_unavailable",
+        "message": "Could not reach storage to check this upload. Please retry.",
+        "retry_after": 5,
+    }
     assert version.processing_status == ProcessingStatus.processing
     assert dispatched == []
 
@@ -532,11 +537,12 @@ def test_abort_marks_the_version_failed_when_the_upload_was_already_gone(
     version.asset_id = ASSET_ID
     version.created_by = test_user.id
     version.processing_status = ProcessingStatus.uploading
+    version.upload_id = "u"
     media_file = MagicMock()
     media_file.s3_key_raw = "raw/k"
     media_file.file_size_bytes = 23 * MB
-    # Second lookup: abort now asks whether the object actually got assembled before
-    # deciding this upload failed.
+    # Second lookup: the version's own file, which pins the key being aborted and
+    # is later asked whether the object actually got assembled.
     mock_db.first.side_effect = [version, media_file]
 
     def already_gone(k, u):
@@ -561,14 +567,17 @@ def test_abort_does_not_fail_a_version_that_already_finished(
     """The client aborts from the catch of every completion failure.
 
     A lost response to a *successful* complete would otherwise mark a finished,
-    transcoded version failed, and the reaper deletes those a day later.
+    transcoded version failed, and nothing ever moves a failed version back.
     """
     version = MagicMock()
     version.id = uuid.uuid4()
     version.asset_id = ASSET_ID
     version.created_by = test_user.id
     version.processing_status = ProcessingStatus.ready
-    mock_db.first.side_effect = [version]
+    version.upload_id = "u"
+    media_file = MagicMock()
+    media_file.s3_key_raw = "raw/k"
+    mock_db.first.side_effect = [version, media_file]
     monkeypatch.setattr(upload_module, "abort_multipart_upload", lambda k, u: None)
 
     resp = client.post(
@@ -590,7 +599,10 @@ def test_abort_surfaces_a_real_storage_failure(
     version.asset_id = ASSET_ID
     version.created_by = test_user.id
     version.processing_status = ProcessingStatus.uploading
-    mock_db.first.side_effect = [version]
+    version.upload_id = "u"
+    media_file = MagicMock()
+    media_file.s3_key_raw = "raw/k"
+    mock_db.first.side_effect = [version, media_file]
 
     def denied(k, u):
         raise _client_error("AccessDenied", "AbortMultipartUpload")
@@ -702,3 +714,110 @@ def test_a_completion_that_did_not_answer_is_accepted_once_the_object_is_there(
     assert dispatched == [version.id]
 
 
+
+
+# ── the completion claim gates the dispatch (#272) ────────────────────────────
+
+def test_a_completion_that_does_not_claim_the_version_does_not_dispatch(
+    client, mock_db, upload_rows, auth_headers, monkeypatch
+):
+    """Two concurrent completions can both pass the status check above.
+
+    The loser must not dispatch: two transcodes writing the same processed/
+    prefix at once is the whole point of the claim. Here the claim reports zero
+    rows updated, which is what Postgres returns for the loser.
+    """
+    version, media_file = upload_rows
+    dispatched = []
+    # _stub() patches _trigger_processing to a no-op, so capture it afterwards or
+    # this test passes no matter what the handler does.
+    _stub(monkeypatch, list_parts=lambda k, u: _listing(23 * MB))
+    monkeypatch.setattr(upload_module, "_trigger_processing",
+                        lambda a, v: dispatched.append(v))
+    mock_db.update.return_value = 0          # someone else claimed it first
+
+    resp = client.post("/upload/complete", json=_body(media_file), headers=auth_headers)
+
+    assert resp.status_code == 200, resp.text
+    # the caller is still told the work is underway, because it is
+    assert resp.json()["status"] == "processing"
+    assert dispatched == [], "the losing completion must not queue a second transcode"
+
+
+def test_a_completion_that_claims_the_version_dispatches_once(
+    client, mock_db, upload_rows, auth_headers, monkeypatch
+):
+    version, media_file = upload_rows
+    dispatched = []
+    _stub(monkeypatch, list_parts=lambda k, u: _listing(23 * MB))
+    monkeypatch.setattr(upload_module, "_trigger_processing",
+                        lambda a, v: dispatched.append(v))
+    mock_db.update.return_value = 1          # this request won the row
+
+    resp = client.post("/upload/complete", json=_body(media_file), headers=auth_headers)
+
+    assert resp.status_code == 200, resp.text
+    assert dispatched == [version.id]
+
+
+# ── the recorded size is reconciled with storage (#258) ───────────────────────
+
+def test_the_recorded_size_is_corrected_to_what_storage_actually_holds(
+    client, mock_db, upload_rows, auth_headers, monkeypatch
+):
+    """file_size_bytes is client-declared and was never revisited.
+
+    Both the per-file limit and the instance storage cap are enforced against
+    this column, and per-project usage is a SUM over it, so an under-declared
+    value made all three permanently wrong for that upload.
+    """
+    version, media_file = upload_rows
+    media_file.file_size_bytes = 100 * MB          # what the client claimed
+    _stub(monkeypatch, list_parts=lambda k, u: _listing(100 * MB),
+          head=lambda k: 4000 * MB)                 # what actually landed
+    monkeypatch.setattr(upload_module, "_trigger_processing", lambda a, v: None)
+    mock_db.update.return_value = 1
+
+    resp = client.post("/upload/complete", json=_body(media_file), headers=auth_headers)
+
+    assert resp.status_code == 200, resp.text
+    assert media_file.file_size_bytes == 4000 * MB, (
+        "the row must record the bytes storage holds, not the ones declared"
+    )
+
+
+def test_a_storage_failure_while_reconciling_does_not_fail_a_good_upload(
+    client, mock_db, upload_rows, auth_headers, monkeypatch
+):
+    """The bytes are already assembled by this point. Losing the reconciliation
+    is worth a log line, not a failed upload the client will retry."""
+    version, media_file = upload_rows
+    declared = media_file.file_size_bytes
+
+    def _boom(_key):
+        raise RuntimeError("storage unreachable")
+
+    _stub(monkeypatch, list_parts=lambda k, u: _listing(23 * MB), head=_boom)
+    monkeypatch.setattr(upload_module, "_trigger_processing", lambda a, v: None)
+    mock_db.update.return_value = 1
+
+    resp = client.post("/upload/complete", json=_body(media_file), headers=auth_headers)
+
+    assert resp.status_code == 200, resp.text
+    assert media_file.file_size_bytes == declared
+
+
+def test_a_matching_size_is_left_alone(
+    client, mock_db, upload_rows, auth_headers, monkeypatch
+):
+    """The honest case, which is every real client: no write, no log noise."""
+    version, media_file = upload_rows
+    _stub(monkeypatch, list_parts=lambda k, u: _listing(23 * MB),
+          head=lambda k: 23 * MB)
+    monkeypatch.setattr(upload_module, "_trigger_processing", lambda a, v: None)
+    mock_db.update.return_value = 1
+
+    resp = client.post("/upload/complete", json=_body(media_file), headers=auth_headers)
+
+    assert resp.status_code == 200, resp.text
+    assert media_file.file_size_bytes == 23 * MB

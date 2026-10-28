@@ -8,8 +8,12 @@
  * state stays the instance's colour.
  */
 
-/** The tokens every accent-painted surface resolves through. */
-export const ACCENT_VAR_NAMES = ['--accent', '--accent-hover', '--accent-muted'] as const
+/** The tokens every accent-painted surface resolves through.
+ *  --border-focus is in here because it is a pure alias of the accent in both
+ *  palettes (globals.css), and it is the only colour on many neutral surfaces —
+ *  the secondary button's hover border, for instance. Branding that skipped it
+ *  left those surfaces on the product's stock blue. */
+export const ACCENT_VAR_NAMES = ['--accent', '--accent-hover', '--accent-muted', '--border-focus'] as const
 
 export function parseHex(hex: string): [number, number, number] | null {
   const m = /^#([0-9a-f]{6})$/i.exec(hex.trim())
@@ -24,14 +28,6 @@ function luminance([r, g, b]: [number, number, number]): number {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255
 }
 
-/** Whether a mark drawn on `color` should be the light one. Uses the same
- *  brightness measure and threshold as the hover shade, so a surface and the
- *  artwork on it never disagree about which way is dark. An unset or
- *  unparseable colour keeps the stylesheet accent, which is dark. */
-export function prefersLightMarkOn(color: string | null | undefined): boolean {
-  const rgb = color ? parseHex(color) : null
-  return !rgb || luminance(rgb) <= 0.6
-}
 
 function shift(rgb: [number, number, number], amount: number): string {
   const to = amount > 0 ? 255 : 0
@@ -40,7 +36,7 @@ function shift(rgb: [number, number, number], amount: number): string {
   return `rgb(${r} ${g} ${b})`
 }
 
-/** The three accent variables for a colour, or null if it isn't a 6-digit hex. */
+/** The accent variables for a colour, or null if it isn't a 6-digit hex. */
 export function accentVars(color: string | null | undefined): Record<string, string> | null {
   const rgb = color ? parseHex(color) : null
   if (!rgb || !color) return null
@@ -51,5 +47,16 @@ export function accentVars(color: string | null | undefined): Record<string, str
     // change its appearance; blending with the theme's secondary surface gives
     // every consumer one stable, readable color instead.
     '--accent-muted': `color-mix(in srgb, ${color} 18%, var(--bg-secondary))`,
+    // Alias of the accent in both default palettes; hover and focus borders
+    // resolve through it.
+    '--border-focus': color,
   }
+}
+
+/** Text colour for initials drawn on a user-chosen avatar colour: whichever of
+ *  near-white and near-black reads better against it. */
+export function readableTextOn(color: string): string {
+  const rgb = parseHex(color)
+  if (!rgb) return '#ffffff'
+  return luminance(rgb) > 0.6 ? '#18181b' : '#ffffff'
 }

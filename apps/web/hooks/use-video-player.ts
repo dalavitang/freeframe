@@ -3,6 +3,7 @@
 import Hls, { type Level } from 'hls.js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useReviewStore } from '@/stores/review-store'
+import { hlsStartConfig, saveBandwidth } from '@/lib/hls-bandwidth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,13 +36,14 @@ export interface VideoPlayerState {
   playbackRate: number
   qualityLevels: QualityLevel[]
   currentQuality: number
+  selectedQuality: number
   isLoading: boolean
   isFullscreen: boolean
   error: string | null
 }
 
 export interface UseVideoPlayerReturn extends VideoPlayerControls, VideoPlayerState {
-  videoRef: React.RefObject<HTMLVideoElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>
   hlsRef: React.RefObject<Hls | null>
 }
 
@@ -60,6 +62,16 @@ export function useVideoPlayer(
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // The armed `canplay` retry of a rejected play() (see togglePlay), together
+  // with the element it was armed on. The <video> is reused across source and
+  // version changes and an already-paused element fires no `pause` event, so
+  // nothing but an explicit disarm stops a stale retry from starting playback
+  // the user did not ask for.
+  const playRetryRef = useRef<{ video: HTMLVideoElement; onCanPlay: () => void } | null>(null)
+  // Bumped whenever the intent to play ends. A play() that is still pending
+  // when the user pauses rejects (AbortError) only AFTER that pause, and must
+  // not arm a retry from its own rejection.
+  const playIntentRef = useRef(0)
 
   const { setPlayheadTime, seekTarget, setActiveAnnotation } = useReviewStore()
 
@@ -71,10 +83,23 @@ export function useVideoPlayer(
   const [isMuted, setIsMuted] = useState(false)
   const [playbackRate, setPlaybackRateState] = useState(1)
   const [qualityLevels, setQualityLevels] = useState<QualityLevel[]>([])
-  const [currentQuality, setCurrentQuality] = useState(-1) // -1 = auto
+  const [currentQuality, setCurrentQuality] = useState(-1) // -1 = no active rung reported
+  const [selectedQuality, setSelectedQuality] = useState(-1) // -1 = auto
   const [isLoading, setIsLoading] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Ends the current intent to play: disarms an armed retry and invalidates a
+  // play() that has not settled yet. Removes the listener from the element the
+  // retry was armed on and never reads videoRef.current, which React has
+  // already nulled by the time a passive effect cleanup runs on unmount.
+  const cancelPlayRetry = useCallback(() => {
+    playIntentRef.current += 1
+    const armed = playRetryRef.current
+    if (!armed) return
+    playRetryRef.current = null
+    armed.video.removeEventListener('canplay', armed.onCanPlay)
+  }, [])
 
   // Sync playhead to store at ~4fps to avoid excessive re-renders
   useEffect(() => {
@@ -103,6 +128,7 @@ export function useVideoPlayer(
       video.currentTime = clamped
       setCurrentTime(clamped)
       if (seekTarget.pause) {
+        cancelPlayRetry()
         video.pause()
         setIsPlaying(false)
       }
@@ -115,6 +141,7 @@ export function useVideoPlayer(
           video.currentTime = clamped
           setCurrentTime(clamped)
           if (seekTarget.pause) {
+            cancelPlayRetry()
             video.pause()
             setIsPlaying(false)
           }
@@ -124,15 +151,30 @@ export function useVideoPlayer(
       video.addEventListener('loadedmetadata', onLoaded)
       return () => video.removeEventListener('loadedmetadata', onLoaded)
     }
-  }, [seekTarget, detached])
+  }, [seekTarget, detached, cancelPlayRetry])
 
-  // Fullscreen change listener
+  // Fullscreen change listener.
+  //
+  // Three sources, because the modes report differently: the standard event,
+  // Safari's prefixed one (iPadOS, desktop), and the video element's own
+  // begin/end events, which are the ONLY signal on an iPhone, where the
+  // picture goes fullscreen through the native player rather than the document.
   useEffect(() => {
-    const handleFsChange = () => {
-      setIsFullscreen(!!document.fullscreenElement)
+    const doc = document as Document & { webkitFullscreenElement?: Element | null }
+    const video = videoRef.current
+    const readDoc = () => setIsFullscreen(!!(document.fullscreenElement || doc.webkitFullscreenElement))
+    const enter = () => setIsFullscreen(true)
+    const leave = () => setIsFullscreen(false)
+    document.addEventListener('fullscreenchange', readDoc)
+    document.addEventListener('webkitfullscreenchange', readDoc)
+    video?.addEventListener('webkitbeginfullscreen', enter)
+    video?.addEventListener('webkitendfullscreen', leave)
+    return () => {
+      document.removeEventListener('fullscreenchange', readDoc)
+      document.removeEventListener('webkitfullscreenchange', readDoc)
+      video?.removeEventListener('webkitbeginfullscreen', enter)
+      video?.removeEventListener('webkitendfullscreen', leave)
     }
-    document.addEventListener('fullscreenchange', handleFsChange)
-    return () => document.removeEventListener('fullscreenchange', handleFsChange)
   }, [])
 
   // HLS + video element setup
@@ -195,6 +237,7 @@ export function useVideoPlayer(
       const hls = new Hls({
         enableWorker: true,
         lowLatencyMode: false,
+        ...hlsStartConfig(),
       })
       hlsRef.current = hls
       hls.loadSource(src)
@@ -205,10 +248,15 @@ export function useVideoPlayer(
           index,
           height: level.height,
           bitrate: level.bitrate,
-          label: level.height ? `${level.height}p` : `${Math.round(level.bitrate / 1000)}kbps`,
+          // Named by the short side, as the ladder sizes a rung: a portrait
+          // 1080x1920 level is 1080p (#452).
+          label: level.height
+            ? `${Math.min(level.width || level.height, level.height)}p`
+            : `${Math.round(level.bitrate / 1000)}kbps`,
         }))
         setQualityLevels(levels)
-        setCurrentQuality(-1) // start on auto
+        setCurrentQuality(-1) // wait for the first active rung
+        setSelectedQuality(-1) // each new manifest starts in auto mode
         setIsLoading(false)
       })
 
@@ -222,6 +270,17 @@ export function useVideoPlayer(
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
         setCurrentQuality(data.level)
       })
+
+      // Remember the measured bandwidth so the next video starts at the right
+      // rung. hls.js samples on the same fragments, in a listener registered
+      // before this one, so the estimate here already includes this fragment.
+      // Compare panes don't save: two players share the link, so each measures
+      // about half of it, and whichever saved last would win.
+      hls.on(Hls.Events.FRAG_BUFFERED, (_event, { frag }) => {
+        if (detached) return
+        if (frag.type !== 'main' || frag.sn === 'initSegment' || frag.stats.aborted) return
+        saveBandwidth(hls.bandwidthEstimate)
+      })
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari native HLS
       video.src = src
@@ -231,6 +290,8 @@ export function useVideoPlayer(
     }
 
     return () => {
+      // The element outlives this source, so a retry armed for it must not.
+      cancelPlayRetry()
       video.removeEventListener('loadedmetadata', onLoadedMetadata)
       video.removeEventListener('timeupdate', onTimeUpdate)
       video.removeEventListener('play', onPlay)
@@ -247,7 +308,7 @@ export function useVideoPlayer(
         hlsRef.current = null
       }
     }
-  }, [src, setPlayheadTime])
+  }, [src, setPlayheadTime, cancelPlayRetry, detached])
 
   // ─── Controls ───────────────────────────────────────────────────────────────
 
@@ -258,18 +319,37 @@ export function useVideoPlayer(
   }, [])
 
   const pause = useCallback(() => {
+    cancelPlayRetry()
     videoRef.current?.pause()
-  }, [])
+  }, [cancelPlayRetry])
 
   const togglePlay = useCallback(() => {
     const video = videoRef.current
     if (!video) return
+    // Every toggle supersedes the previous one: never two listeners, and a
+    // toggle to pause takes the retry with it.
+    cancelPlayRetry()
     if (video.paused) {
-      video.play().catch(() => {})
+      const intent = playIntentRef.current
+      video.play().catch(() => {
+        // Paused, re-toggled, or moved to another source while play() was
+        // still pending: this rejection is not a first tap that needs a retry.
+        if (intent !== playIntentRef.current) return
+        // iOS/ManagedMediaSource: the first gesture often only starts buffering,
+        // play() rejects without buffered data. Retry once as soon as
+        // data is available, otherwise mobile always needs a second tap.
+        const onCanPlay = () => {
+          playRetryRef.current = null
+          video.play().catch(() => {})
+        }
+        playRetryRef.current = { video, onCanPlay }
+        video.addEventListener('canplay', onCanPlay, { once: true })
+        hlsRef.current?.startLoad()
+      })
     } else {
       video.pause()
     }
-  }, [])
+  }, [cancelPlayRetry])
 
   const seek = useCallback((time: number) => {
     const video = videoRef.current
@@ -291,7 +371,7 @@ export function useVideoPlayer(
     const hls = hlsRef.current
     if (!hls) return
     hls.currentLevel = levelIndex // -1 = auto
-    setCurrentQuality(levelIndex)
+    setSelectedQuality(levelIndex)
   }, [])
 
   const setVolume = useCallback((vol: number) => {
@@ -308,11 +388,40 @@ export function useVideoPlayer(
     video.muted = !video.muted
   }, [])
 
+  // An iPhone has no element fullscreen at all: `Element.requestFullscreen` is
+  // undefined there, so this threw "not a function" and the button did nothing.
+  // Safari on iPadOS and the desktop has the prefixed element API; an iPhone
+  // has only the video element's own native player. Try them in that order.
+  //
+  // The iPhone path shows the system player, so the annotation overlay and our
+  // transport are not visible while it is up. That is a platform limit, not a
+  // choice: there is no way to put custom chrome over a fullscreen video there.
   const toggleFullscreen = useCallback((containerEl: HTMLElement) => {
-    if (!document.fullscreenElement) {
-      containerEl.requestFullscreen().catch(() => {})
-    } else {
-      document.exitFullscreen().catch(() => {})
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null
+      webkitExitFullscreen?: () => Promise<void> | void
+    }
+    const el = containerEl as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void }
+    const video = videoRef.current as (HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void
+      webkitDisplayingFullscreen?: boolean
+    }) | null
+
+    const active = !!(document.fullscreenElement || doc.webkitFullscreenElement)
+    if (!active && !video?.webkitDisplayingFullscreen) {
+      if (typeof el.requestFullscreen === 'function') {
+        void Promise.resolve(el.requestFullscreen()).catch(() => {})
+      } else if (typeof el.webkitRequestFullscreen === 'function') {
+        void Promise.resolve(el.webkitRequestFullscreen()).catch(() => {})
+      } else if (video && typeof video.webkitEnterFullscreen === 'function') {
+        video.webkitEnterFullscreen()
+      }
+      return
+    }
+    if (typeof document.exitFullscreen === 'function') {
+      void Promise.resolve(document.exitFullscreen()).catch(() => {})
+    } else if (typeof doc.webkitExitFullscreen === 'function') {
+      void Promise.resolve(doc.webkitExitFullscreen()).catch(() => {})
     }
   }, [])
 
@@ -329,6 +438,7 @@ export function useVideoPlayer(
     playbackRate,
     qualityLevels,
     currentQuality,
+    selectedQuality,
     isLoading,
     isFullscreen,
     error,

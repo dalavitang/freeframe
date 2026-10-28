@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest'
+import * as React from 'react'
+import { vi } from 'vitest'
+import { NextIntlClientProvider } from 'next-intl'
+import enMessages from '../messages/en.json'
 
 type ChangeListener = (event: { matches: boolean; media: string }) => void
 
@@ -67,11 +71,17 @@ function makeMediaQueryList(query: string) {
   return mql
 }
 
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  configurable: true,
-  value: (query: string) => makeMediaQueryList(query),
-})
+// Guarded: setupFiles run for every test file, including one that declares
+// `@vitest-environment node` because it needs Node APIs rather than a DOM.
+// There is no window to define matchMedia on there, and the whole shim is for
+// components that cannot run in that environment anyway.
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: (query: string) => makeMediaQueryList(query),
+  })
+}
 
 /** Sets the viewport width every matchMedia min-width/max-width query is evaluated
  * against, and fires 'change' on any query whose match state actually flips —
@@ -91,3 +101,31 @@ export function setViewportWidth(width: number) {
 }
 
 setViewportWidth(1024)
+
+// Every component in the app now reads its copy through next-intl, while the
+// upstream test suite renders with Testing Library's plain `render`. Wrap all
+// renders in a provider (and keep `rerender` wrapped too) so those tests keep
+// working without touching each one. `renderWithI18n` remains available when a
+// test wants to be explicit; a nested provider is harmless.
+vi.mock('@testing-library/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@testing-library/react')>()
+  const wrap = (ui: React.ReactElement) =>
+    React.createElement(NextIntlClientProvider, { locale: 'en', messages: enMessages } as never, ui)
+  return {
+    ...actual,
+    render: (ui: React.ReactElement, options?: Parameters<typeof actual.render>[1]) => {
+      const result = actual.render(wrap(ui), options)
+      const rerender = result.rerender
+      result.rerender = (next: React.ReactNode) => rerender(wrap(next as React.ReactElement))
+      return result
+    },
+    renderHook: (hook: () => unknown, options?: { wrapper?: React.ComponentType<{ children: React.ReactNode }> }) => {
+      const Wrapper = options?.wrapper
+      return actual.renderHook(hook, {
+        ...options,
+        wrapper: ({ children }: { children: React.ReactNode }) =>
+          wrap(Wrapper ? React.createElement(Wrapper, null, children) : (children as React.ReactElement)),
+      })
+    },
+  }
+})

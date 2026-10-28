@@ -5,20 +5,58 @@ import * as Popover from '@radix-ui/react-popover'
 import { ArrowUpDown, Check } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
-import { useViewStore, type SortKey } from '@/stores/view-store'
+import { useViewStore, type SortKey, type SortDirection } from '@/stores/view-store'
 
-const sortKeys: { value: SortKey; key: 'custom' | 'date' | 'name' | 'status' | 'type' }[] = [
-  { value: 'custom', key: 'custom' },
-  { value: 'date', key: 'date' },
-  { value: 'name', key: 'name' },
-  { value: 'status', key: 'status' },
-  { value: 'type', key: 'type' },
-]
+export interface SortOption<K extends string> {
+  value: K
+  label: string
+  /** What each direction is called; alphabetical unless the option says otherwise. */
+  directionLabels?: Record<SortDirection, string>
+}
+
+/** Date sorts read as time, not as letters. */
+export const dateDirectionLabels: Record<SortDirection, string> = { asc: 'Oldest', desc: 'Newest' }
+const alphabeticalDirectionLabels: Record<SortDirection, string> = { asc: 'A-Z', desc: 'Z-A' }
 
 export function SortPopover() {
   const t = useTranslations('sort')
   const { sortKey, setSortKey, sortDirection, toggleSortDirection } = useViewStore()
-  const activeLabel = t(sortKeys.find((o) => o.value === sortKey)?.key ?? 'custom')
+  const sortOptions: SortOption<SortKey>[] = [
+    { value: 'custom', label: t('custom') },
+    { value: 'date', label: t('date'), directionLabels: { asc: t('oldest'), desc: t('newest') } },
+    { value: 'name', label: t('name') },
+    { value: 'status', label: t('status') },
+    { value: 'type', label: t('type') },
+  ]
+
+  return (
+    <SortPopoverView
+      options={sortOptions}
+      sortKey={sortKey}
+      sortDirection={sortDirection}
+      onSortKeyChange={setSortKey}
+      onToggleDirection={toggleSortDirection}
+    />
+  )
+}
+
+/** The "Sorted by" button and menu, for any set of sort options. Picking the
+ *  active option again flips the direction. */
+export function SortPopoverView<K extends string>({
+  options,
+  sortKey,
+  sortDirection,
+  onSortKeyChange,
+  onToggleDirection,
+}: {
+  options: SortOption<K>[]
+  sortKey: K
+  sortDirection: SortDirection
+  onSortKeyChange: (key: K) => void
+  onToggleDirection: () => void
+}) {
+  const t = useTranslations('sort')
+  const activeLabel = options.find((o) => o.value === sortKey)?.label ?? options[0]?.label
 
   return (
     <Popover.Root>
@@ -40,14 +78,14 @@ export function SortPopover() {
             data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
             data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
-          {sortKeys.map((opt) => (
+          {options.map((opt) => (
             <button
               key={opt.value}
               onClick={() => {
                 if (sortKey === opt.value) {
-                  toggleSortDirection()
+                  onToggleDirection()
                 } else {
-                  setSortKey(opt.value)
+                  onSortKeyChange(opt.value)
                 }
               }}
               className={cn(
@@ -60,10 +98,10 @@ export function SortPopover() {
               <span className="w-4 shrink-0">
                 {sortKey === opt.value && <Check className="h-3.5 w-3.5" />}
               </span>
-              {t(opt.key)}
+              {opt.label}
               {sortKey === opt.value && (
                 <span className="ml-auto text-xs text-text-tertiary">
-                  {sortDirection === 'asc' ? t('asc') : t('desc')}
+                  {(opt.directionLabels ?? alphabeticalDirectionLabels)[sortDirection]}
                 </span>
               )}
             </button>

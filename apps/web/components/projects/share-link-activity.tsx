@@ -20,6 +20,12 @@ const ACTION_KEYS: Record<ShareActivityAction, 'activityOpened' | 'activityViewe
   downloaded: 'activityDownloaded',
 }
 
+// Which file a download handed out, so an owner can tell whether the master went.
+const RENDITION_KEYS: Record<string, 'renditionOriginal' | 'renditionTranscode'> = {
+  original: 'renditionOriginal',
+  transcode: 'renditionTranscode',
+}
+
 function actionLabelColor(action: ShareActivityAction): string {
   if (action === 'approved') return 'text-status-success'
   if (action === 'rejected') return 'text-status-error'
@@ -170,7 +176,12 @@ export function ShareLinkActivityPanel({ token }: ShareLinkActivityPanelProps) {
               const displayName = activity.actor_name || activity.actor_email
               const initial = displayName.charAt(0).toUpperCase()
               const colorClass = avatarColor(activity.actor_email)
-              const actionLabel = t(ACTION_KEYS[activity.action])
+              const rendition = activity.rendition
+                ? t(RENDITION_KEYS[activity.rendition] ?? 'renditionOther')
+                : null
+              const actionLabel = rendition
+                ? `${t(ACTION_KEYS[activity.action])} (${rendition})`
+                : t(ACTION_KEYS[activity.action])
               const actionColor = actionLabelColor(activity.action)
 
               return (

@@ -1,11 +1,14 @@
-const createNextIntlPlugin = require('next-intl/plugin')
+/**
+ * Mount the app under a sub-path (e.g. /freeframe) instead of the domain root.
+ * Build-time: set NEXT_PUBLIC_BASE_PATH and rebuild the web image. Empty by
+ * default, so root deployments are unchanged.
+ */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  basePath,
   output: 'standalone',
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -17,6 +20,8 @@ const nextConfig = {
   },
 }
 
-const withNextIntl = createNextIntlPlugin('./i18n.ts')
+const withNextIntl = process.env.VITEST
+  ? (config) => config
+  : require('next-intl/plugin')('./i18n.ts')
 
 module.exports = withNextIntl(nextConfig)

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { withBasePath } from '@/lib/base-path'
 import { useNotificationStore } from '@/stores/notification-store'
 import { useFormatters } from '@/hooks/use-formatters'
 import { cn } from '@/lib/utils'
@@ -29,7 +30,8 @@ function getNotificationText(
   n: Notification,
   t: ReturnType<typeof useTranslations<'notifications'>>,
 ): { title: string; subtitle: string | null } {
-  const actor = n.actor_name || t('actorFallback')
+  const actorName = n.actor_name || t('actorFallback')
+  const actor = n.actor_is_guest ? t('guestActor', { name: actorName }) : actorName
   const asset = n.asset_name || t('assetFallback')
   switch (n.type) {
     case 'mention':
@@ -59,7 +61,9 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
     // Navigate to asset if possible
     if (notification.project_id && notification.asset_id) {
       const qs = notification.comment_id ? `?commentId=${notification.comment_id}` : ''
-      window.location.href = `/projects/${notification.project_id}/assets/${notification.asset_id}${qs}`
+      window.location.href = withBasePath(
+        `/projects/${notification.project_id}/assets/${notification.asset_id}${qs}`,
+      )
       onClose()
     }
   }
@@ -101,9 +105,12 @@ function NotificationItem({ notification, onClose }: { notification: Notificatio
 interface NotificationDrawerProps {
   open: boolean
   onClose: () => void
+  /** Whether the sidebar is the 52px rail or expanded to 220px. The drawer
+   *  opens against its right edge, so it has to know which. */
+  railCollapsed: boolean
 }
 
-export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
+export function NotificationDrawer({ open, onClose, railCollapsed }: NotificationDrawerProps) {
   const t = useTranslations('notifications')
   const layout = useTranslations('layout')
   const { notifications, isLoading, fetchNotifications, markAllRead, unreadCount } =
@@ -120,11 +127,24 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
 
   return (
     <>
-      {/* Backdrop — offset to not cover sidebar */}
-      <div className="fixed top-0 right-0 bottom-0 left-[52px] z-40" onClick={onClose} />
+      {/* Backdrop — offset to not cover sidebar. Both widths are spelled out
+          because Tailwind only generates classes it can find whole. The
+          expanded offset is gated at `md` so a phone keeps the drawer on screen. */}
+      <div
+        className={cn(
+          'fixed top-0 right-0 bottom-0 left-[52px] z-40',
+          !railCollapsed && 'md:left-[220px]',
+        )}
+        onClick={onClose}
+      />
 
       {/* Drawer */}
-      <div className="fixed left-[52px] top-0 z-50 h-full w-[380px] border-r border-border bg-bg-primary shadow-2xl flex flex-col animate-in slide-in-from-left-2 duration-150">
+      <div
+        className={cn(
+          'fixed left-safe [--ff-left:52px] top-0 z-50 h-full w-[380px] border-r border-border bg-bg-primary shadow-2xl flex flex-col pb-safe animate-in slide-in-from-left-2 duration-150',
+          !railCollapsed && 'md:[--ff-left:220px]',
+        )}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           <span className="text-sm font-semibold text-text-primary">{layout('notifications')}</span>

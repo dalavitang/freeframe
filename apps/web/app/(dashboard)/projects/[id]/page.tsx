@@ -4,8 +4,6 @@ import * as React from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
-import * as Dialog from "@radix-ui/react-dialog";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Upload,
   X,
@@ -14,27 +12,32 @@ import {
   Download,
   Share2,
   Plus,
-  Trash2,
   ChevronDown,
   MessageSquare,
   FolderPlus,
   Folder as FolderIcon,
   FileText,
   MoreHorizontal,
-  MinusCircle,
-  ExternalLink,
   Users,
+  Settings,
 } from "lucide-react";
+import { cn, formatRelativeTime, formatBytes } from "@/lib/utils";
 import { useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { withBasePath } from "@/lib/base-path";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/shared/avatar";
 import { AssetGrid } from "@/components/projects/asset-grid";
+import { DownloadMenu } from "@/components/shared/download-menu";
+import { downloadAsset, fetchAssetDownloadOptions } from "@/lib/asset-download";
 import { CommentPanel } from "@/components/review/comment-panel";
-import { UploadZone } from "@/components/upload/upload-zone";
-import { useUploadStore } from "@/stores/upload-store";
+import { UploadMenu } from "@/components/upload/upload-menu";
+import { useFileDropRegion } from "@/components/projects/use-file-drop-region";
+import { startDrop } from "@/lib/upload-drop";
+import { currentSubject } from "@/lib/upload-owner";
+import type { Collected } from "@/lib/upload-folder-walk";
+import { useToast } from "@/components/shared/toast";
+import { useBranding } from "@/components/shared/branding-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { useViewStore } from "@/stores/view-store";
 import { useBreadcrumbStore } from "@/stores/breadcrumb-store";
@@ -43,16 +46,17 @@ import { useFolders, useTrash } from "@/hooks/use-folders";
 import { useShareLinks } from "@/hooks/use-share-links";
 import { FolderTree } from "@/components/projects/folder-tree";
 import { ShareLinksTable } from "@/components/projects/share-links-table";
+import { ShareLinkMenuItems } from "@/components/projects/menus/share-link-menu";
+import { ContextMenuArea, DotsMenu } from "@/components/shared/item-menu";
 import {
   ShareLinkContent,
   ShareLinkSettingsPanel,
 } from "@/components/projects/share-link-detail";
 import { NameDialog } from "@/components/projects/name-dialog";
 import { ShareCreateDialog } from "@/components/projects/share-create-dialog";
-import { ProjectMembersDialog } from "@/components/projects/project-members-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { usePageTitle } from "@/hooks/use-page-title";
-import { useFormatters } from "@/hooks/use-formatters";
+import { useRefetchOnUploadStatus } from "@/hooks/use-upload-refetch";
 import type {
   Project,
   AssetResponse,
@@ -73,17 +77,13 @@ export default function ProjectDetailPage() {
   const tft = useTranslations("folderTree");
   const tf = useTranslations("folderCard");
   const ta = useTranslations("assetMetadata");
-  const tap = useTranslations("appearance");
-  const tsf = useTranslations("shareFolder");
-  const { formatRelativeTime, formatBytes } = useFormatters();
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = params.id as string;
 
-  const [uploadOpen, setUploadOpen] = React.useState(false);
-  const [assetName, setAssetName] = React.useState("");
-  const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
+  // The Upload menu, opened from the toolbar button or the empty state.
+  const [uploadMenuOpen, setUploadMenuOpen] = React.useState(false);
   const [selectedAsset, setSelectedAsset] =
     React.useState<AssetResponse | null>(null);
   const [shareLinksExpanded, setShareLinksExpanded] = React.useState(true);
@@ -123,7 +123,6 @@ export default function ProjectDetailPage() {
     projectId?: string | null;
   } | null>(null);
   const [shareMode, setShareMode] = React.useState(false);
-  const [membersDialogOpen, setMembersDialogOpen] = React.useState(false);
   const [pendingBulkDelete, setPendingBulkDelete] = React.useState<{
     assetIds: string[];
     folderIds: string[];
@@ -131,8 +130,18 @@ export default function ProjectDetailPage() {
   const [assetToRename, setAssetToRename] = React.useState<AssetResponse | null>(null);
   const [assetToDelete, setAssetToDelete] = React.useState<AssetResponse | null>(null);
 
-  const { files: uploadFiles, startUpload } = useUploadStore();
-  const { user } = useAuthStore();
+  const toast = useToast();
+  const { user, userFetched } = useAuthStore();
+  const { poweredByFreeframe } = useBranding();
+
+  // A folder write the server refused says why: a name already taken where the
+  // folder would land, or a trashed item the retention purge has since removed.
+  const reportRefusal = React.useCallback(
+    (err: unknown, fallback: string) => {
+      toast.error(err instanceof ApiError ? err.detail : fallback);
+    },
+    [toast],
+  );
 
   const {
     tree,
@@ -164,6 +173,7 @@ export default function ProjectDetailPage() {
     deleteComment,
     addReaction,
     removeReaction,
+    createComment,
   } = useComments(selectedAsset?.id || null, selectedVersionId);
 
   const { data: project, isLoading: loadingProject } = useSWR<Project>(
@@ -278,7 +288,7 @@ export default function ProjectDetailPage() {
     return map;
   }, [authorUsers, user]);
 
-  const { data: members } = useSWR<ProjectMember[]>(
+  const { data: members, error: membersError } = useSWR<ProjectMember[]>(
     `/projects/${projectId}/members`,
     () => api.get<ProjectMember[]>(`/projects/${projectId}/members`),
   );
@@ -309,6 +319,39 @@ export default function ProjectDetailPage() {
   const canManageMembers = currentRole === "owner";
   const canSeeShareLinks = currentRole === "owner" || currentRole === "editor";
   const canComment = currentRole !== "viewer";
+  // Until the members and the signed-in user have both answered, the role
+  // above reads "viewer" without anyone being one. A file dropped then is held
+  // rather than refused, and decided once they answer. A 403 from the members
+  // request is an answer: the caller is not a member (a public project lets
+  // anyone in to view), so they may not upload. Any other failure, or a user
+  // that never loads, hands the drop to the queue instead: the server checks
+  // the role on every upload, and the queue says "Sign in to upload" when there
+  // is no session.
+  const notAMember =
+    membersError instanceof ApiError && membersError.status === 403;
+  const dropRole: "wait" | "allow" | "refuse" = notAMember
+    ? "refuse"
+    : members !== undefined && user
+      ? canUpload
+        ? "allow"
+        : "refuse"
+      : membersError !== undefined || (userFetched && !user)
+        ? "allow"
+        : "wait";
+  const mayDropFiles = dropRole !== "refuse";
+  // delete_comment lets a project owner remove anyone's comment.
+  const canModerate = currentRole === "owner";
+
+  // One folder's share link, from its menu in the tree, grid or list.
+  function openFolderShareDialog(folderId: string, folderName: string) {
+    setShareDialogPreselect({ type: "folder", id: folderId, name: folderName });
+    setShareDialogOpen(true);
+  }
+
+  async function handleDeleteShareLink(token: string) {
+    await deleteShareLink(token);
+    if (selectedShareLink === token) setSelectedShareLink(null);
+  }
 
   function openShareDialog(assetIds: string[], folderIds: string[]) {
     if (folderIds.length === 1 && assetIds.length === 0) {
@@ -348,33 +391,112 @@ export default function ProjectDetailPage() {
     setShareDialogOpen(true);
   }
 
+  const refetchGrid = React.useCallback(() => {
+    mutateAssets();
+    mutateSubfolders();
+  }, [mutateAssets, mutateSubfolders]);
+  useRefetchOnUploadStatus(projectId, refetchGrid);
+
+  // ─── Drop files onto the asset area ─────────────────────────────────────
+  //
+  // The drop target is the whole content region rather than the grid, so the
+  // empty state -- which is the case that says "Upload your first asset to get
+  // started" across an inert rectangle -- accepts a drop too, and so does the
+  // blank space below a short row of cards.
+  //
+  // Not the trash and not the share-link list: neither can receive an upload,
+  // and `mayDropFiles` is owner/editor once the role is known, so a reviewer
+  // never gets an affordance that ends in a 403. Whether a dialog is open is
+  // deliberately not part of it; see `useFileDropRegion` for why naming them
+  // one by one does not work.
+  const canDropFiles = mayDropFiles && !showTrash && !showShareLinks;
+
+  /**
+   * Starts a drop or a pick into `folderId`, straight away: its folders are
+   * made under that one and each file is queued into its own, named after the
+   * file (`startDrop`). What the drop left out is said in the Uploads panel.
+   * With no session nothing is queued, since an upload belongs to the account
+   * that added it, and the user is told once for the whole drop. `owner` is
+   * the account the drop was made as, read when it was made: another tab can
+   * sign in as someone else before a held drop starts.
+   */
+  const queueDrop = React.useCallback(
+    (
+      folderId: string | null,
+      dropped: Collected | Promise<Collected>,
+      owner: string | null,
+    ) => {
+      void startDrop(
+        dropped,
+        { projectId, projectName: project?.name, folderId },
+        owner,
+      ).then((outcome) => {
+        if (outcome.kind === "signed-out") toast.error(t("signInToUpload"));
+        if (outcome.kind === "account-changed")
+          toast.error(t("anotherAccountSignedIn"));
+      });
+    },
+    [projectId, project?.name, toast],
+  );
+
+  // Drops made while the role is still loading, each with the project it was
+  // made on so a drop never lands in a project the user has since left. Drops
+  // held for a project the user has left are discarded on purpose. What a drop
+  // held is read during the drop all the same (it cannot be read later), and
+  // only started once the role is known.
+  const heldDrops = React.useRef<
+    {
+      projectId: string;
+      folderId: string | null;
+      dropped: Promise<Collected>;
+      owner: string | null;
+    }[]
+  >([]);
+
+  const startDroppedUploads = React.useCallback(
+    (folderId: string | null, dropped: Promise<Collected>) => {
+      const owner = currentSubject();
+      if (dropRole === "wait") {
+        heldDrops.current.push({ projectId, folderId, dropped, owner });
+        return;
+      }
+      queueDrop(folderId, dropped, owner);
+    },
+    [dropRole, projectId, queueDrop],
+  );
+
   React.useEffect(() => {
-    const anyComplete = uploadFiles.some(
-      (f) => f.projectId === projectId && f.status === "complete",
-    );
-    if (anyComplete) {
-      mutateAssets();
-      mutateSubfolders();
+    if (dropRole === "wait") return;
+    const held = heldDrops.current.filter((d) => d.projectId === projectId);
+    heldDrops.current = [];
+    if (held.length === 0) return;
+    if (dropRole === "refuse") {
+      toast.error(t("noUploadPermission"));
+      return;
     }
-  }, [uploadFiles, mutateAssets, mutateSubfolders, projectId]);
+    for (const d of held) queueDrop(d.folderId, d.dropped, d.owner);
+  }, [dropRole, projectId, queueDrop, toast]);
 
-  const handleFilesSelected = (files: File[]) => {
-    setPendingFiles(files);
-    if (files.length > 0) setAssetName(files[0].name.replace(/\.[^/.]+$/, ""));
-  };
+  const {
+    regionRef: dropRegion,
+    regionProps,
+    showRegionFrame,
+    fileDragTarget: fileDragFolderId,
+    setFolderTarget,
+    onDropToFolder: handleDropFilesToFolder,
+  } = useFileDropRegion({
+    enabled: canDropFiles,
+    currentFolderId,
+    onUploadFiles: startDroppedUploads,
+  });
 
-  const handleStartUpload = () => {
-    pendingFiles.forEach((file) => {
-      const name =
-        pendingFiles.length === 1 ? assetName || file.name : file.name;
-      // Note: startUpload does not yet accept folderId — assets will upload to root.
-      // Upload store needs to be updated in a future task to support folder placement.
-      startUpload(file, projectId, name, project?.name, currentFolderId);
-    });
-    setPendingFiles([]);
-    setAssetName("");
-    setUploadOpen(false);
-  };
+  // A pick from the Upload menu starts at once, into the folder on screen.
+  // The menu is only offered once the role allows uploading, so there is
+  // nothing to hold.
+  const handlePick = React.useCallback(
+    (picked: Collected) => queueDrop(currentFolderId, picked, currentSubject()),
+    [queueDrop, currentFolderId],
+  );
 
   const handleSelectFolder = React.useCallback(
     (folderId: string | null) => {
@@ -385,12 +507,15 @@ export default function ProjectDetailPage() {
       const url = folderId
         ? `/projects/${projectId}?folder=${folderId}`
         : `/projects/${projectId}`;
-      window.history.replaceState(null, "", url);
+      window.history.replaceState(null, "", withBasePath(url));
     },
     [projectId],
   );
 
   return (
+    // No refusal handler here: it lives on the dashboard shell, which wraps
+    // this page along with the header, the rail and the attribution badge --
+    // all of which are outside this element and were still losing the tab.
     <div className="flex h-full flex-col lg:flex-row overflow-hidden">
       {/* ─── Left Sidebar (Frame.io style) ──────────────────────────────── */}
       <div className="hidden lg:flex w-72 flex-col border-r border-border bg-bg-secondary shrink-0">
@@ -427,12 +552,20 @@ export default function ProjectDetailPage() {
               setShowShareLinks(false);
               setSelectedShareLink(null);
             }}
-            onCreateFolder={async (_name, parentId) => {
-              setFolderDialogParentId(parentId);
-              setFolderDialogOpen(true);
-            }}
+            onCreateFolder={
+              canCreateFolder
+                ? async (_name, parentId) => {
+                    setFolderDialogParentId(parentId);
+                    setFolderDialogOpen(true);
+                  }
+                : undefined
+            }
             onRenameFolder={async (id, name) => {
-              await renameFolder(id, name);
+              try {
+                await renameFolder(id, name);
+              } catch (err) {
+                reportRefusal(err, t("renameFolderFailed"));
+              }
               mutateSubfolders();
             }}
             onDeleteFolder={async (id) => {
@@ -441,8 +574,20 @@ export default function ProjectDetailPage() {
               mutateAssets();
               mutateSubfolders();
             }}
+            onShareFolder={canShare ? openFolderShareDialog : undefined}
+            // `mayDropFiles`, not `canDropFiles`. What the main pane is showing
+            // says nothing about the sidebar: a folder row means "upload into
+            // this folder" while the trash or the share-link list is open just
+            // as much as it does beside the grid. Only the permission applies.
+            onDropFiles={mayDropFiles ? handleDropFilesToFolder : undefined}
+            onFileDragOverFolder={mayDropFiles ? setFolderTarget : undefined}
+            fileDragTarget={fileDragFolderId}
             onDropItems={async (targetFolderId, assetIds, folderIds) => {
-              await bulkMove(assetIds, folderIds, targetFolderId);
+              try {
+                await bulkMove(assetIds, folderIds, targetFolderId);
+              } catch (err) {
+                reportRefusal(err, t("moveItemsFailed"));
+              }
               mutateAssets();
               mutateSubfolders();
             }}
@@ -502,11 +647,19 @@ export default function ProjectDetailPage() {
                 )}
               >
                 <LinkIcon className="h-4 w-4" />
-                <span>{t("allShareLinks", { count: shareLinks.length })}</span>
+                <span>All Share Links ({shareLinks.length})</span>
               </button>
-              {shareLinks.map((link) => (
+              {shareLinks.map((link) => {
+                const linkMenu = (
+                  <ShareLinkMenuItems
+                    link={link}
+                    onToggleEnabled={toggleEnabled}
+                    onDelete={handleDeleteShareLink}
+                  />
+                );
+                return (
+                <ContextMenuArea key={link.token} items={linkMenu}>
                 <div
-                  key={link.token}
                   className={cn(
                     "group w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors cursor-pointer",
                     selectedShareLink === link.token
@@ -528,72 +681,21 @@ export default function ProjectDetailPage() {
                   <span className="truncate flex-1">
                     {link.title || link.target_name}
                   </span>
-                  <DropdownMenu.Root>
-                    <DropdownMenu.Trigger asChild>
-                      <button
-                        className="h-5 w-5 flex items-center justify-center rounded text-text-tertiary hover:text-text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        <MoreHorizontal className="h-3.5 w-3.5" />
-                      </button>
-                    </DropdownMenu.Trigger>
-                    <DropdownMenu.Portal>
-                      <DropdownMenu.Content
-                        className="z-50 min-w-[180px] rounded-xl border border-border bg-bg-secondary p-1 shadow-xl"
-                        sideOffset={4}
-                        align="end"
-                      >
-                        <DropdownMenu.Item
-                          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
-                          onSelect={() =>
-                            window.open(
-                              `${window.location.origin}/share/${link.token}`,
-                              "_blank",
-                            )
-                          }
-                        >
-                          <ExternalLink className="h-4 w-4 text-text-tertiary" />
-                          {t("openShare")}
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item
-                          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
-                          onSelect={() =>
-                            navigator.clipboard.writeText(
-                              `${window.location.origin}/share/${link.token}`,
-                            )
-                          }
-                        >
-                          <LinkIcon className="h-4 w-4 text-text-tertiary" />
-                          {ts("copyLink")}
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Separator className="my-1 h-px bg-border" />
-                        <DropdownMenu.Item
-                          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary cursor-pointer outline-none transition-colors"
-                          onSelect={() =>
-                            toggleEnabled(link.token, !link.is_enabled)
-                          }
-                        >
-                          <MinusCircle className="h-4 w-4 text-text-tertiary" />
-                          {link.is_enabled ? t("disableAccess") : t("enableAccess")}
-                        </DropdownMenu.Item>
-                        <DropdownMenu.Item
-                          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-status-error hover:bg-status-error/10 cursor-pointer outline-none transition-colors"
-                          onSelect={async () => {
-                            await deleteShareLink(link.token);
-                            if (selectedShareLink === link.token)
-                              setSelectedShareLink(null);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          {tc("delete")}
-                        </DropdownMenu.Item>
-                      </DropdownMenu.Content>
-                    </DropdownMenu.Portal>
-                  </DropdownMenu.Root>
+                  <DotsMenu items={linkMenu}>
+                    <button
+                      aria-label={`${link.title || link.target_name} menu`}
+                      className="h-5 w-5 flex items-center justify-center rounded text-text-tertiary hover:text-text-primary opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity shrink-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </button>
+                  </DotsMenu>
                 </div>
-              ))}
+                </ContextMenuArea>
+                );
+              })}
             </div>
           )}
         </div>}
@@ -606,6 +708,14 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* ─── Main Content ───────────────────────────────────────────────── */}
+      {/* The wrapper carries the drag handlers and the overlay. It does not
+          scroll, so `inset` on the overlay is the region someone can see rather
+          than the whole scroll height, and the border stays where the eye is. */}
+      <div
+        ref={dropRegion}
+        className="relative flex-1 flex min-w-0 h-full"
+        {...regionProps}
+      >
       <div
         className="flex-1 flex flex-col min-w-0 bg-bg-primary h-full overflow-y-auto"
         onClick={() => setSelectedAsset(null)}
@@ -619,6 +729,7 @@ export default function ProjectDetailPage() {
               onToggleEnabled={(token, enabled) =>
                 toggleEnabled(token, enabled)
               }
+              onDelete={handleDeleteShareLink}
               onViewActivity={(token) => setSelectedShareLink(token)}
               frontendUrl={
                 typeof window !== "undefined" ? window.location.origin : ""
@@ -640,7 +751,7 @@ export default function ProjectDetailPage() {
                 {tft("recentlyDeleted")}
               </h2>
               {trash.folders.length === 0 && trash.assets.length === 0 ? (
-                <p className="text-xs text-text-tertiary">{t("noDeletedItems")}</p>
+                <p className="text-xs text-text-tertiary">No deleted items</p>
               ) : (
                 <div className="space-y-1">
                   {trash.folders.map((item) => (
@@ -660,7 +771,11 @@ export default function ProjectDetailPage() {
                       <button
                         className="text-xs text-accent hover:underline shrink-0"
                         onClick={async () => {
-                          await restoreFolder(item.id);
+                          try {
+                            await restoreFolder(item.id);
+                          } catch (err) {
+                            reportRefusal(err, t("restoreFolderFailed"));
+                          }
                           mutateTrash();
                           mutateAssets();
                           mutateSubfolders();
@@ -686,7 +801,11 @@ export default function ProjectDetailPage() {
                       <button
                         className="text-xs text-accent hover:underline shrink-0"
                         onClick={async () => {
-                          await restoreAsset(item.id);
+                          try {
+                            await restoreAsset(item.id);
+                          } catch (err) {
+                            reportRefusal(err, t("restoreAssetFailed"));
+                          }
                           mutateTrash();
                           mutateAssets();
                           mutateSubfolders();
@@ -705,7 +824,7 @@ export default function ProjectDetailPage() {
               folders={subfolders ?? []}
               currentFolderId={currentFolderId}
               projectId={projectId}
-              projectName={project?.name ?? tp("project")}
+              projectName={project?.name ?? 'Project'}
               folderTree={tree ?? []}
               isLoading={loadingAssets}
               assignees={assigneesMap}
@@ -714,7 +833,11 @@ export default function ProjectDetailPage() {
               authorNames={authorNames}
               fileSizes={fileSizes}
               selectedAssetId={selectedAsset?.id}
-              onUpload={() => setUploadOpen(true)}
+              selectionShortcuts
+              onDeselectAll={() => setSelectedAsset(null)}
+              // The toolbar's Upload menu, which this opens, is there only
+              // for a role that may upload.
+              onUpload={canUpload ? () => setUploadMenuOpen(true) : undefined}
               onAssetSelect={(asset, e) => {
                 e?.stopPropagation();
                 setSelectedAsset(asset as AssetResponse);
@@ -724,7 +847,11 @@ export default function ProjectDetailPage() {
               }
               onFolderOpen={(folder) => handleSelectFolder(folder.id)}
               onFolderRename={async (id, name) => {
-                await renameFolder(id, name);
+                try {
+                  await renameFolder(id, name);
+                } catch (err) {
+                  reportRefusal(err, t("renameFolderFailed"));
+                }
                 mutateSubfolders();
               }}
               onFolderDelete={async (id) => {
@@ -732,16 +859,26 @@ export default function ProjectDetailPage() {
                 mutateAssets();
                 mutateSubfolders();
               }}
-              onFolderShare={async (folderId, folderName) => {
-                setShareDialogPreselect({
-                  type: "folder",
-                  id: folderId,
-                  name: folderName,
-                });
-                setShareDialogOpen(true);
-              }}
+              // Gated as in the tree and the toolbar, so a folder's menu is the
+              // same everywhere for every role.
+              onFolderShare={canShare ? openFolderShareDialog : undefined}
+              onFolderNewSubfolder={
+                canCreateFolder
+                  ? (parentId) => {
+                      setFolderDialogParentId(parentId);
+                      setFolderDialogOpen(true);
+                    }
+                  : undefined
+              }
+              onDropFilesToFolder={canDropFiles ? handleDropFilesToFolder : undefined}
+              onFileDragOverFolder={canDropFiles ? setFolderTarget : undefined}
+              fileDragTarget={fileDragFolderId}
               onDropToFolder={async (targetFolderId, assetIds, folderIds) => {
-                await bulkMove(assetIds, folderIds, targetFolderId);
+                try {
+                  await bulkMove(assetIds, folderIds, targetFolderId);
+                } catch (err) {
+                  reportRefusal(err, t("moveItemsFailed"));
+                }
                 mutateAssets();
                 mutateSubfolders();
               }}
@@ -758,24 +895,20 @@ export default function ProjectDetailPage() {
                 setShareDialogResult(null);
                 setShareDialogOpen(true);
               }}
-              onAssetDownload={async (asset) => {
+              onAssetDownload={async (asset, rendition) => {
                 try {
-                  const data = await api.get<{ url: string }>(
-                    `/assets/${asset.id}/stream?download=true`,
-                  );
-                  if (data?.url) {
-                    const iframe = document.createElement("iframe");
-                    iframe.style.display = "none";
-                    iframe.src = data.url;
-                    document.body.appendChild(iframe);
-                    setTimeout(() => iframe.remove(), 30000);
-                  }
+                  await downloadAsset(asset.id, rendition);
                 } catch {}
               }}
+              loadAssetDownloadOptions={(asset) => fetchAssetDownloadOptions(asset.id)}
               onAssetRename={(asset) => setAssetToRename(asset as AssetResponse)}
               onAssetDelete={(asset) => setAssetToDelete(asset as AssetResponse)}
               onBulkMove={async (assetIds, folderIds, targetFolderId) => {
-                await bulkMove(assetIds, folderIds, targetFolderId);
+                try {
+                  await bulkMove(assetIds, folderIds, targetFolderId);
+                } catch (err) {
+                  reportRefusal(err, t("moveItemsFailed"));
+                }
                 mutateAssets();
                 mutateSubfolders();
                 mutateTree();
@@ -784,29 +917,20 @@ export default function ProjectDetailPage() {
                 setPendingBulkDelete({ assetIds, folderIds });
               }}
               onBulkDownload={async (assetIds, folderIds) => {
-                function triggerDownload(url: string) {
-                  const iframe = document.createElement("iframe");
-                  iframe.style.display = "none";
-                  iframe.src = url;
-                  document.body.appendChild(iframe);
-                  setTimeout(() => iframe.remove(), 30000);
-                }
-
-                async function downloadAsset(id: string) {
+                // No choice per asset here. The instance setting decides, for
+                // members too: originals when an admin allows them outside a
+                // project, transcodes otherwise -- the same rule as Download
+                // All on a share link.
+                async function downloadOne(id: string) {
                   try {
-                    const data = await api.get<{ url: string }>(
-                      `/assets/${id}/stream?download=true`,
-                    );
-                    if (data?.url) {
-                      triggerDownload(data.url);
-                      await new Promise((r) => setTimeout(r, 300));
-                    }
+                    await downloadAsset(id, undefined, true);
+                    await new Promise((r) => setTimeout(r, 300));
                   } catch {}
                 }
 
                 // Download selected assets
                 for (const id of assetIds) {
-                  await downloadAsset(id);
+                  await downloadOne(id);
                 }
 
                 // Download assets from selected folders
@@ -816,7 +940,7 @@ export default function ProjectDetailPage() {
                       `/projects/${projectId}/assets?folder_id=${folderId}&skip=0&limit=100`,
                     );
                     for (const fa of folderAssets) {
-                      await downloadAsset(fa.id);
+                      await downloadOne(fa.id);
                     }
                   } catch {}
                 }
@@ -824,13 +948,26 @@ export default function ProjectDetailPage() {
               actions={
                 <>
                   {canManageMembers && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setMembersDialogOpen(true)}
-                    >
-                      <Users className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button variant="secondary" size="sm" asChild>
+                        <Link
+                          href={`/projects/${projectId}/settings?tab=people`}
+                          aria-label="Members"
+                          title={t("members")}
+                        >
+                          <Users className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                      <Button variant="secondary" size="sm" asChild>
+                        <Link
+                          href={`/projects/${projectId}/settings`}
+                          aria-label="Project settings"
+                          title={t("projectSettings")}
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </>
                   )}
                   {canShare && (
                     <Button
@@ -851,89 +988,56 @@ export default function ProjectDetailPage() {
                       }}
                     >
                       <FolderPlus className="h-4 w-4" />
-                      {t("newFolderTitle")}
+                      {t("newFolder")}
                     </button>
                   )}
                   {canUpload && (
-                    <Button size="sm" onClick={() => setUploadOpen(true)}>
-                      <Upload className="h-4 w-4" />
-                      {tl("upload")}
-                    </Button>
+                    <UploadMenu
+                      open={uploadMenuOpen}
+                      onOpenChange={setUploadMenuOpen}
+                      onPick={handlePick}
+                      trigger={
+                        <Button size="sm">
+                          <Upload className="h-4 w-4" />
+                          {tl("upload")}
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </Button>
+                      }
+                    />
                   )}
                 </>
               }
             />
           )}
-
-          {/* Upload dialog */}
-          <Dialog.Root open={uploadOpen} onOpenChange={setUploadOpen}>
-            <Dialog.Portal>
-              <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-              <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-bg-secondary p-6 shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
-                <Dialog.Close className="absolute right-4 top-4 text-text-tertiary hover:text-text-primary transition-colors">
-                  <X className="h-4 w-4" />
-                </Dialog.Close>
-                <Dialog.Title className="text-base font-semibold text-text-primary">
-                  {t("uploadAsset")}
-                </Dialog.Title>
-                <Dialog.Description className="mt-1 text-sm text-text-secondary">
-                  {t("uploadDescription")}
-                </Dialog.Description>
-                <div className="mt-4 space-y-4">
-                  {pendingFiles.length === 0 ? (
-                    <UploadZone onFilesSelected={handleFilesSelected} />
-                  ) : (
-                    <>
-                      <div className="rounded-lg border border-border bg-bg-tertiary">
-                        <div className="px-3 py-2 text-xs font-medium text-text-tertiary border-b border-border">
-                          {t("filesSelected", { count: pendingFiles.length })}
-                        </div>
-                        <div className="max-h-40 overflow-y-auto divide-y divide-border">
-                          {pendingFiles.map((f, i) => (
-                            <div key={i} className="flex items-center justify-between px-3 py-1.5">
-                              <span className="text-sm text-text-primary truncate mr-2">{f.name}</span>
-                              <span className="text-xs text-text-tertiary shrink-0">
-                                {f.size < 1024 * 1024
-                                  ? `${(f.size / 1024).toFixed(0)} KB`
-                                  : `${(f.size / (1024 * 1024)).toFixed(1)} MB`}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      {pendingFiles.length === 1 && (
-                        <Input
-                          label={t("assetName")}
-                          value={assetName}
-                          onChange={(e) => setAssetName(e.target.value)}
-                          placeholder={t("assetNamePlaceholder")}
-                        />
-                      )}
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setPendingFiles([])}
-                        >
-                          {t("changeFiles")}
-                        </Button>
-                        <Button size="sm" onClick={handleStartUpload}>
-                          {t("startUpload")}
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
         </div>
+      </div>
+      {showRegionFrame && (
+        // pointer-events-none is load-bearing: an overlay that takes the
+        // pointer swallows the dragleave and the drop underneath it, so the
+        // marking would stick and the drop would never arrive.
+        <div className="pointer-events-none absolute inset-2 z-30 flex items-center justify-center rounded-xl border-2 border-accent bg-accent/10">
+          <span className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-lg">
+            {t("dropToUpload")}
+          </span>
+        </div>
+      )}
       </div>
 
       {/* ─── Right Panel (Comments + Fields tabs, or Share Link Settings) ─ */}
       {rightPanelOpen && (
-        <div className="hidden xl:flex w-[360px] flex-col border-l border-border bg-bg-secondary shrink-0">
+        <div
+          className={cn(
+            "hidden xl:flex w-[360px] flex-col border-l border-border bg-bg-secondary shrink-0",
+            // The shell's floating "Powered by FreeFrame" badge sits 1rem from
+            // the window's bottom-right corner, and this panel runs into that
+            // corner: the badge (30px tall) was drawn over the right half of
+            // "Open in viewer to comment" and took the click, opening the
+            // repository instead of the viewer. The reserve is the badge's
+            // offset and height plus a gap, so whatever the tab, the panel's
+            // last control ends above it. See the badge in (dashboard)/layout.tsx.
+            poweredByFreeframe && "pb-[calc(3.5rem+env(safe-area-inset-bottom))]",
+          )}
+        >
           {showShareLinks && selectedShareLink ? (
             <ShareLinkSettingsPanel token={selectedShareLink} />
           ) : (
@@ -961,7 +1065,7 @@ export default function ProjectDetailPage() {
                       : "border-transparent text-text-tertiary hover:text-text-secondary",
                   )}
                 >
-                  {tsh("fields")}
+                  {t("fields")}
                 </button>
                 {selectedAsset && (
                   <button
@@ -981,12 +1085,27 @@ export default function ProjectDetailPage() {
                       <CommentPanel
                         comments={comments as any}
                         currentUserId={user?.id}
+                        canModerate={canModerate}
+                        // Without these the panel reads the review store, which
+                        // still holds whatever asset was opened last -- so the
+                        // export ran against the wrong asset instead of the one
+                        // selected here.
+                        //
+                        // "This version" means the latest one here, which is what
+                        // the grid shows and what the comments above were loaded
+                        // for. The review screen exports whatever its version
+                        // switcher has selected; there is no switcher on this page.
+                        exportAsset={selectedAsset ?? null}
+                        exportVersionId={selectedVersionId ?? undefined}
                         onResolve={resolveComment}
                         onDelete={deleteComment}
                         onAddReaction={addReaction}
                         onRemoveReaction={removeReaction}
                         onReply={() => {}}
-                        onSubmitReply={async () => {}}
+                        // Was a no-op: the reply box cleared and saved nothing.
+                        onSubmitReply={async (parentId: string, body: string) => {
+                          await createComment(body, undefined, undefined, undefined, parentId);
+                        }}
                       />
                     ) : (
                       <div className="flex-1 flex items-center justify-center p-6 text-center">
@@ -995,10 +1114,11 @@ export default function ProjectDetailPage() {
                             <MessageSquare className="h-6 w-6 text-text-tertiary/50" />
                           </div>
                           <p className="text-sm text-text-secondary">
-                            {tcm("emptyTitle")}
+                            {tcm("noCommentsYet")}
                           </p>
                           <p className="text-xs text-text-tertiary mt-1">
-                            {t("noCommentsHint")}
+                            Double-click the asset to open the viewer and leave
+                            comments.
                           </p>
                         </div>
                       </div>
@@ -1039,7 +1159,7 @@ export default function ProjectDetailPage() {
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-text-tertiary">{tsh("type")}</span>
+                        <span className="text-xs text-text-tertiary">Type</span>
                         <span className="text-xs text-text-primary capitalize">
                           {selectedAsset.asset_type.replace("_", " ")}
                         </span>
@@ -1055,7 +1175,7 @@ export default function ProjectDetailPage() {
                       {authorNames[selectedAsset.created_by] && (
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-text-tertiary">
-                            {tap("uploadedBy")}
+                            {t("uploadedBy")}
                           </span>
                           <span className="text-xs text-text-primary">
                             {authorNames[selectedAsset.created_by]}
@@ -1065,7 +1185,7 @@ export default function ProjectDetailPage() {
                       {fileSizes[selectedAsset.id] != null && (
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-text-tertiary">
-                            {tap("fileSize")}
+                            {t("fileSize")}
                           </span>
                           <span className="text-xs text-text-primary">
                             {formatBytes(fileSizes[selectedAsset.id])}
@@ -1086,10 +1206,16 @@ export default function ProjectDetailPage() {
                         assigneesMap[selectedAsset.assignee_id] && (
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-text-tertiary">
-                              {ta("assignee")}
+                              {t("assignee")}
                             </span>
                             <div className="flex items-center gap-1.5">
-                              <Avatar size="sm" className="h-5 w-5" />
+                              <Avatar
+                                src={assigneesMap[selectedAsset.assignee_id].avatar_url}
+                                name={assigneesMap[selectedAsset.assignee_id].name}
+                                color={assigneesMap[selectedAsset.assignee_id].avatar_color}
+                                size="sm"
+                                className="h-5 w-5"
+                              />
                               <span className="text-xs text-text-primary">
                                 {assigneesMap[selectedAsset.assignee_id].name}
                               </span>
@@ -1119,31 +1245,23 @@ export default function ProjectDetailPage() {
                           setShareDialogOpen(true);
                         }}
                       >
-                        <LinkIcon className="h-3.5 w-3.5" /> {tp("share")}
+                        <LinkIcon className="h-3.5 w-3.5" /> Share
                       </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="gap-1"
-                        onClick={async () => {
+                      <DownloadMenu
+                        load={() => fetchAssetDownloadOptions(selectedAsset.id)}
+                        onPick={async (rendition) => {
                           try {
-                            const res = await api.get<{ url: string }>(
-                              `/assets/${selectedAsset.id}/stream?download=true`,
-                            );
-                            if (res.url) {
-                              const iframe = document.createElement("iframe");
-                              iframe.style.display = "none";
-                              iframe.src = res.url;
-                              document.body.appendChild(iframe);
-                              setTimeout(() => iframe.remove(), 30000);
-                            }
+                            await downloadAsset(selectedAsset.id, rendition);
                           } catch {
                             // Silent fail
                           }
                         }}
                       >
-                        <Download className="h-3.5 w-3.5" /> {tcm("download")}
-                      </Button>
+                        <Button variant="secondary" size="sm" className="gap-1">
+                          <Download className="h-3.5 w-3.5" /> Download
+                          <ChevronDown className="h-3 w-3 opacity-60" />
+                        </Button>
+                      </DownloadMenu>
                     </div>
                   </div>
                 )
@@ -1155,7 +1273,7 @@ export default function ProjectDetailPage() {
                       <MessageSquare className="h-8 w-8 text-text-tertiary/50" />
                     </div>
                     <p className="text-sm text-text-secondary">
-                      {tsf("selectAsset")}
+                      {t("selectAssetForComments")}
                     </p>
                   </div>
                 </div>
@@ -1170,10 +1288,14 @@ export default function ProjectDetailPage() {
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
         title={t("newFolderTitle")}
-        placeholder={tf("namePlaceholder")}
+        placeholder="Folder name"
         submitLabel={tc("create")}
         onSubmit={async (name) => {
-          await createFolder(name, folderDialogParentId);
+          try {
+            await createFolder(name, folderDialogParentId);
+          } catch (err) {
+            reportRefusal(err, t("createFolderFailed"));
+          }
           mutateAssets();
           mutateSubfolders();
         }}
@@ -1205,25 +1327,13 @@ export default function ProjectDetailPage() {
         }}
       />
 
-      {/* Project members dialog */}
-      <ProjectMembersDialog
-        open={membersDialogOpen}
-        onOpenChange={setMembersDialogOpen}
-        projectId={projectId}
-        projectName={project?.name ?? ""}
-      />
-
       {/* Bulk delete confirmation */}
       <ConfirmDialog
         open={pendingBulkDelete !== null}
         onOpenChange={(open) => {
           if (!open) setPendingBulkDelete(null);
         }}
-        title={t("bulkDeleteTitle", {
-          count:
-            (pendingBulkDelete?.assetIds.length ?? 0) +
-            (pendingBulkDelete?.folderIds.length ?? 0),
-        })}
+        title={`Delete ${(pendingBulkDelete?.assetIds.length ?? 0) + (pendingBulkDelete?.folderIds.length ?? 0)} item${(pendingBulkDelete?.assetIds.length ?? 0) + (pendingBulkDelete?.folderIds.length ?? 0) !== 1 ? "s" : ""}?`}
         description={t("bulkDeleteDescription")}
         confirmLabel={tc("delete")}
         variant="danger"
@@ -1245,7 +1355,7 @@ export default function ProjectDetailPage() {
         onOpenChange={(open) => { if (!open) setAssetToRename(null); }}
         title={t("renameAsset")}
         defaultValue={assetToRename?.name ?? ""}
-        placeholder={t("renameAssetPlaceholder")}
+        placeholder="Asset name..."
         submitLabel={tc("rename")}
         onSubmit={async (name) => {
           if (!assetToRename) return;
@@ -1261,7 +1371,7 @@ export default function ProjectDetailPage() {
       <ConfirmDialog
         open={assetToDelete !== null}
         onOpenChange={(open) => { if (!open) setAssetToDelete(null); }}
-        title={t("deleteAssetTitle", { name: assetToDelete?.name })}
+        title={`Delete "${assetToDelete?.name}"?`}
         description={t("deleteAssetDescription")}
         confirmLabel={tc("delete")}
         variant="danger"

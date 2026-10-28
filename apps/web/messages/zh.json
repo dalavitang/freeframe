@@ -37,7 +37,8 @@
     "disabled": "已禁用",
     "on": "开启",
     "off": "关闭",
-    "unknown": "未知"
+    "unknown": "未知",
+    "download": "下载"
   },
   "locale": {
     "language": "语言",
@@ -53,7 +54,8 @@
     "search": "搜索",
     "hidePanel": "隐藏面板",
     "showPanel": "显示面板",
-    "tagline": "协作式媒体审核与审批"
+    "tagline": "协作式媒体审核与审批",
+    "uploads": "上传"
   },
   "nav": {
     "profile": "个人资料",
@@ -95,7 +97,8 @@
     "assignment": "{actor} 将 {asset} 分配给了您",
     "approval": "{actor} 更新了 {asset} 的审批状态",
     "dueSoon": "{asset} 即将到期",
-    "newNotification": "新通知"
+    "newNotification": "新通知",
+    "guestActor": "{name}（访客）"
   },
   "uploads": {
     "title": "上传",
@@ -119,10 +122,35 @@
     "statusCancelled": "已取消",
     "progressUploading": "上传中 {percent}%",
     "progressProcessing": "处理中 {percent}%",
-    "processingEllipsis": "处理中…",
+    "processingEllipsis": "正在处理…",
     "cancelUpload": "取消上传",
     "remove": "移除",
-    "dismiss": "关闭"
+    "dismiss": "关闭",
+    "queuedCount": "{count} 个排队中",
+    "statusResuming": "正在恢复",
+    "statusStarting": "正在开始",
+    "statusFinalizing": "正在完成",
+    "statusInterrupted": "已中断",
+    "statusElsewhere": "其他位置",
+    "waitingForConnection": "等待连接",
+    "waitingForStorage": "等待存储",
+    "waitingToStart": "等待开始",
+    "waitingToResume": "等待恢复",
+    "stillUploadingElsewhere": "仍在另一个标签页或另一台设备上上传",
+    "transferStopped": "传输已停止 · 恢复后只发送缺少的部分",
+    "resumePick": "恢复 — 再次选择 {name}",
+    "resumeNamed": "恢复 {name}",
+    "discardHint": "放弃此上传并释放其占用的空间",
+    "discardTitle": "放弃 {name}？",
+    "discardDescription": "已发送的分片现在会被删除且无法恢复。若要完成此上传，请改为恢复。",
+    "discard": "放弃",
+    "cancelUploadNamed": "取消上传 {name}",
+    "retry": "重试",
+    "retryNamed": "重试 {name}",
+    "cancelAllQueued": "取消所有排队项",
+    "finalizingEllipsis": "正在完成…",
+    "startingEllipsis": "正在开始…",
+    "resumingEllipsis": "正在恢复…"
   },
   "keyboardShortcuts": {
     "title": "键盘快捷键",
@@ -148,7 +176,15 @@
     "goAssets": "前往素材",
     "focusCommentInput": "聚焦评论输入框",
     "cancelComment": "取消评论 / 关闭面板",
-    "footerHint": "随时按 <kbd>?</kbd> 切换此面板"
+    "footerHint": "随时按 <kbd>?</kbd> 切换此面板",
+    "groupProject": "项目",
+    "selectAll": "全选",
+    "selectRange": "选择一段文件夹或素材",
+    "toggleSelection": "添加/移除文件夹或素材的选择",
+    "deselectAll": "取消全选",
+    "postComment": "发表评论",
+    "newLine": "换行",
+    "cancelReply": "取消回复"
   },
   "errors": {
     "notFoundTitle": "页面未找到",
@@ -187,7 +223,7 @@
     "assetCount": "{count, plural, one {# 个素材} other {# 个素材}}",
     "itemCount": "{count, plural, one {# 项} other {# 项}}",
     "itemCountWithSize": "{count, plural, one {# 项} other {# 项}} · {size}",
-    "selectedCount": "{count, plural, one {# 项已选择} other {# 项已选择}}",
+    "selectedCount": "{count, plural, one {已选择 # 项} other {已选择 # 项}}",
     "updatedAt": "更新于 {time}",
     "emptyTitle": "暂无素材",
     "emptyDescription": "上传您的第一个素材以开始使用。",
@@ -199,7 +235,13 @@
     "deleteConfirm": "删除“{name}”？此操作无法撤销。",
     "settingsTitle": "项目设置",
     "project": "项目",
-    "selectItemsToShare": "选择要分享的项目"
+    "selectItemsToShare": "选择要分享的项目",
+    "openInNewTab": "在新标签页打开",
+    "copyLink": "复制链接",
+    "deleteProject": "删除项目",
+    "selectedMenuCount": "已选择 {count} 项",
+    "createShareLink": "创建分享链接",
+    "moveToEllipsis": "移动到…"
   },
   "assetCard": {
     "createShareLink": "创建分享链接",
@@ -230,7 +272,9 @@
     "renameTitle": "重命名文件夹",
     "namePlaceholder": "文件夹名称",
     "deleteTitle": "删除“{name}”？",
-    "deleteDescription": "此文件夹及其所有内容将移至回收站。您之后可以恢复它们。"
+    "deleteDescription": "此文件夹及其所有内容将移至回收站。您之后可以恢复它们。",
+    "createShareLink": "创建分享链接",
+    "newSubfolder": "新建子文件夹"
   },
   "folderTree": {
     "newSubfolder": "新建子文件夹",
@@ -320,7 +364,15 @@
     "name": "名称",
     "type": "类型",
     "optionsCol": "选项",
-    "requiredCol": "必填"
+    "requiredCol": "必填",
+    "tabGeneral": "常规",
+    "tabPeople": "成员",
+    "tabDanger": "危险操作",
+    "loadFailed": "无法加载此项目",
+    "retry": "重试",
+    "ownerOnly": "只有项目所有者可以修改设置。",
+    "loadingSettings": "正在加载项目设置",
+    "pageTitle": "{name} 设置"
   },
   "roles": {
     "owner": "所有者",
@@ -428,7 +480,29 @@
     "views": "浏览次数",
     "activity": "活动",
     "viewActivity": "查看活动",
-    "shareCount": "{count, plural, one {# 个分享} other {# 个分享}}"
+    "shareCount": "{count, plural, one {# 个分享} other {# 个分享}}",
+    "renditionOriginal": "原片",
+    "renditionTranscode": "转码",
+    "renditionOther": "其他",
+    "appearance": "外观",
+    "createShareLink": "创建分享链接",
+    "shareLinkCreated": "分享链接已创建",
+    "linksToAsset": "包含此素材的链接",
+    "addToAnother": "添加到其他分享链接",
+    "accessDisabled": "访问已禁用",
+    "expired": "已过期",
+    "indirectLink": "通过文件夹或整个项目",
+    "copyLinkNamed": "复制链接 {name}",
+    "assetFallback": "素材",
+    "addFailed": "无法添加到此链接",
+    "addedToLink": "已添加到此链接",
+    "alreadyInLink": "已在此链接中",
+    "layout": "布局",
+    "share": "分享",
+    "newShareLink": "新建分享链接",
+    "searchShareLinks": "搜索 {count} 个分享链接",
+    "noMatchingShareLinks": "没有匹配的分享链接",
+    "noShareLinksYet": "暂无分享链接"
   },
   "sort": {
     "sortedBy": "排序方式",
@@ -438,7 +512,9 @@
     "status": "状态",
     "type": "类型",
     "asc": "A-Z",
-    "desc": "Z-A"
+    "desc": "Z-A",
+    "oldest": "最早",
+    "newest": "最新"
   },
   "appearance": {
     "title": "外观",
@@ -466,7 +542,10 @@
     "sortName": "名称",
     "sortDateCreated": "创建日期",
     "sortSize": "大小",
-    "showCardInfoDesc": "在缩略图下方显示名称、类型和大小"
+    "showCardInfoDesc": "在缩略图下方显示名称、类型和大小",
+    "landscape": "横向",
+    "square": "方形",
+    "portrait": "纵向"
   },
   "auth": {
     "login": {
@@ -502,7 +581,8 @@
       "signInTitle": "验证码登录",
       "magicLinkDescription": "输入您的邮箱，我们将为您发送登录验证码。",
       "sendMagicCode": "发送验证码",
-      "signInWithPassword": "返回密码登录"
+      "signInWithPassword": "改用密码登录",
+      "codeSentIfAccount": "如果 <highlight>{email}</highlight> 已注册，验证码正在发送中。"
     },
     "setup": {
       "emailRequired": "请输入邮箱",
@@ -610,7 +690,8 @@
     "commentPosted": "评论已发布！",
     "comment": "评论",
     "bothNameEmailRequired": "姓名和邮箱均为必填项。",
-    "validEmail": "请输入有效的邮箱地址。"
+    "validEmail": "请输入有效的邮箱地址。",
+    "noCommentsYet": "暂无评论"
   },
   "annotation": {
     "pen": "画笔",
@@ -667,7 +748,10 @@
     "zoomIn": "放大",
     "zoomOut": "缩小",
     "actualSize": "实际大小",
-    "fitToScreen": "适应屏幕"
+    "fitToScreen": "适应屏幕",
+    "moreControls": "更多控制",
+    "speed": "速度",
+    "qualityNamed": "画质 {quality}"
   },
   "versionSwitcher": {
     "version": "版本：",
@@ -859,7 +943,8 @@
     "firstProject": "创建您的第一个项目",
     "firstProjectHint": "整理和审阅您的媒体素材",
     "noAssetsYet": "暂无素材",
-    "member": "成员"
+    "member": "成员",
+    "cancel": "取消"
   },
   "projectDetail": {
     "assets": "素材",
@@ -893,7 +978,23 @@
     "deleteAssetTitle": "删除“{name}”？",
     "deleteAssetDescription": "这会将素材移至回收站。您可以稍后从“最近删除”中恢复。",
     "bulkDeleteTitle": "删除 {count, plural, one {# 个项目} other {# 个项目}}？",
-    "bulkDeleteDescription": "这会将所选项目移至回收站。您可以稍后从“最近删除”中恢复。"
+    "bulkDeleteDescription": "这会将所选项目移至回收站。您可以稍后从“最近删除”中恢复。",
+    "signInToUpload": "登录后上传",
+    "anotherAccountSignedIn": "另一个账户已登录，因此未上传任何文件",
+    "noUploadPermission": "你没有权限上传到此项目",
+    "renameFolderFailed": "无法重命名文件夹",
+    "moveItemsFailed": "无法移动项目",
+    "restoreFolderFailed": "无法恢复文件夹",
+    "restoreAssetFailed": "无法恢复素材",
+    "createFolderFailed": "无法创建文件夹",
+    "members": "成员",
+    "projectSettings": "项目设置",
+    "dropToUpload": "拖放以上传",
+    "fields": "字段",
+    "uploadedBy": "上传者",
+    "fileSize": "文件大小",
+    "assignee": "负责人",
+    "selectAssetForComments": "选择一个素材以查看评论"
   },
   "assetPage": {
     "loading": "正在加载素材…",
@@ -1099,14 +1200,49 @@
     "emptyDescription": "用户注册或被邀请后将显示在这里。",
     "subtitleInstance": "配置此实例",
     "subtitleBranding": "让此实例呈现您的风格",
-    "tabBranding": "品牌"
+    "tabBranding": "品牌",
+    "deletedUserCount": "{count} 个属于已删除用户",
+    "cannotInviteDeleted": "无法邀请 {emails}：该邮箱属于已删除用户",
+    "user": "用户",
+    "actions": "操作",
+    "copied": "已复制",
+    "link": "链接",
+    "sent": "已发送",
+    "resendInvite": "重新发送邀请",
+    "revokeInvite": "撤销邀请",
+    "deleteUserFailed": "删除用户失败",
+    "resendInviteFailed": "重新发送邀请失败",
+    "deactivateInviteDesc": "他们的邀请链接将失效，无法登录，并从用户列表中移除。该邮箱无法再次被邀请。",
+    "deleteUserDesc": "他们将从用户列表中移除且无法登录。其评论和活动会保留。请先为仅由他们拥有的项目指定新所有者，否则将无人能够管理这些项目。该邮箱无法再次被邀请。",
+    "revokeInviteTitle": "撤销发给 {email} 的邀请？",
+    "deleteUserTitle": "删除 {name}？"
   },
   "instanceSettings": {
     "title": "实例存储",
     "storageLimit": "存储上限（GB）",
     "zeroUnlimitedPlaceholder": "0 = 无限制",
     "unlimitedHint": "留空或填 0 表示无限制。",
-    "saveFailed": "保存失败"
+    "saveFailed": "保存失败",
+    "saved": "已保存",
+    "sectionStorage": "实例存储",
+    "storageLimitLabel": "存储上限（GB）",
+    "sectionUploads": "上传",
+    "uploadPartSize": "上传分片大小",
+    "partAutoHint": "根据每个文件自动调整：10 MB 分片，大文件会使用更大的分片以加快完成。",
+    "partSizeLabel": "分片大小（MB）",
+    "partFixedHint": "介于 {min} 到 {max} MB 之间。需要超过 10,000 个分片的文件会被拒绝。",
+    "sectionDownloads": "下载",
+    "outsideProject": "项目外",
+    "originalsHint": "分享链接访客、公开项目访客以及被直接分享素材的人可以下载的内容。项目成员始终可以下载原片。",
+    "sectionSignIn": "登录",
+    "defaultLoginMode": "默认登录方式",
+    "loginModeHint": "登录页首先显示的方式。用户仍可切换到另一种方式。",
+    "loginMagicCode": "魔法验证码",
+    "loginPassword": "邮箱和密码",
+    "partAutomatic": "自动",
+    "partFixed": "固定",
+    "originalsTranscode": "仅转码",
+    "originalsBoth": "原片或转码"
   },
   "brandingTab": {
     "identity": "身份标识",

@@ -47,43 +47,40 @@ export function KeyboardShortcuts({
   const common = useTranslations('common')
   const [internalOpen, setInternalOpen] = React.useState(false)
 
+  // Only shortcuts that are actually bound. Keep this in step with the handlers:
+  // the panel went unmounted for a long time while listing keys nothing handled.
   const SHORTCUT_GROUPS: ShortcutGroup[] = [
     {
       title: t('groupNavigation'),
       items: [
         { keys: ['⌘', 'K'], label: t('openCommandPalette') },
         { keys: ['?'], label: t('showShortcuts') },
-        { keys: ['⌘', '/'], label: t('toggleSidebar') },
       ],
     },
     {
       title: t('groupReview'),
       items: [
         { keys: ['Space'], label: t('playPauseMedia') },
-        { keys: ['←'], label: t('seekBack5') },
-        { keys: ['→'], label: t('seekForward5') },
         { keys: ['J'], label: t('jumpBack10') },
         { keys: ['K'], label: t('playPause') },
         { keys: ['L'], label: t('jumpForward10') },
-        { keys: ['M'], label: t('mute') },
-        { keys: ['F'], label: t('toggleFullscreen') },
       ],
     },
     {
-      title: t('groupActions'),
+      title: t('groupProject'),
       items: [
-        { keys: ['N', 'P'], label: t('newProject') },
-        { keys: ['N', 'A'], label: t('uploadAsset') },
-        { keys: ['G', 'H'], label: t('goHome') },
-        { keys: ['G', 'P'], label: t('goProjects') },
-        { keys: ['G', 'A'], label: t('goAssets') },
+        { keys: ['⌘', 'A'], label: t('selectAll') },
+        { keys: ['Shift', 'Click'], label: t('selectRange') },
+        { keys: ['⌘', 'Click'], label: t('toggleSelection') },
+        { keys: ['Esc'], label: t('deselectAll') },
       ],
     },
     {
       title: t('groupComments'),
       items: [
-        { keys: ['C'], label: t('focusCommentInput') },
-        { keys: ['Esc'], label: t('cancelComment') },
+        { keys: ['Enter'], label: t('postComment') },
+        { keys: ['Shift', 'Enter'], label: t('newLine') },
+        { keys: ['Esc'], label: t('cancelReply') },
       ],
     },
   ]
@@ -124,7 +121,11 @@ export function KeyboardShortcuts({
           className={cn(
             'fixed left-1/2 top-1/2 z-50 w-full max-w-2xl -translate-x-1/2 -translate-y-1/2',
             'rounded-2xl border border-border bg-bg-elevated shadow-2xl',
-            'data-[state=open]:animate-slide-down',
+            // tailwindcss-animate's enter keyframes keep the centering translate;
+            // the custom `animate-slide-down` set `transform` outright, so the
+            // panel opened off to the bottom right and then jumped to the middle.
+            'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+            'data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]',
             'max-h-[80vh] flex flex-col',
           )}
         >

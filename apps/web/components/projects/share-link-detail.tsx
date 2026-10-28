@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import * as Switch from "@radix-ui/react-switch";
 import useSWR from "swr";
 import {
   ArrowLeft,
@@ -11,24 +10,30 @@ import {
   Lock,
   Calendar,
   Paintbrush,
-  LayoutGrid,
-  LayoutList,
   Eye,
   EyeOff,
   ChevronDown,
   ChevronRight,
   MessageSquare,
-  Download,
-  Layers,
   Droplets,
   Globe,
   X,
 } from "lucide-react";
+import { cn, dateInputValue, endOfDayISO } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
-import { cn } from "@/lib/utils";
+import { withBasePath } from "@/lib/base-path";
 import { api } from "@/lib/api";
 import { ShareLinkActivityPanel } from "@/components/projects/share-link-activity";
-import type { ShareLink, ShareLinkAppearance } from "@/types";
+import {
+  ShareAppearanceFields,
+  DEFAULT_SHARE_APPEARANCE,
+} from "@/components/projects/share-appearance-fields";
+import { ToggleRow } from "@/components/ui/setting-controls";
+import { SHARE_ASSETS_PAGE_SIZE } from "@/lib/share-page";
+import { useBranding } from "@/components/shared/branding-provider";
+import { resolveShareLogoUrl } from "@/lib/project-branding";
+import { SharePagePreviewFrame } from "@/components/projects/share-page-preview";
+import type { Project, ProjectBranding, ShareLink, ShareLinkAppearance } from "@/types";
 
 // ─── Shared hook for share link data + mutations ────────────────────────────
 
@@ -69,17 +74,10 @@ function useShareLinkData(token: string) {
     [token, mutate],
   );
 
-  const appearance: ShareLinkAppearance = shareLink?.appearance || {
-    layout: "grid",
-    theme: "dark",
-    accent_color: null,
-    open_in_viewer: false,
-    sort_by: "name",
-    card_size: "m",
-    aspect_ratio: "landscape",
-    thumbnail_scale: "fit",
-    show_card_info: true,
-  };
+  // A link without a stored appearance renders on the API's defaults, so the
+  // panel shows (and patches from) those same values.
+  const appearance: ShareLinkAppearance =
+    shareLink?.appearance || DEFAULT_SHARE_APPEARANCE;
 
   const updateAppearance = React.useCallback(
     (patch: Partial<ShareLinkAppearance>) => {
@@ -133,46 +131,6 @@ function Section({
   );
 }
 
-// ─── Toggle Row ──────────────────────────────────────────────────────────────
-
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onCheckedChange,
-}: {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-sm text-text-primary">{label}</p>
-        {description && (
-          <p className="text-xs text-text-tertiary mt-0.5">{description}</p>
-        )}
-      </div>
-      <Switch.Root
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        className={cn(
-          "relative h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors",
-          checked ? "bg-accent" : "bg-bg-hover",
-        )}
-      >
-        <Switch.Thumb
-          className={cn(
-            "block h-4 w-4 rounded-full bg-white transition-transform",
-            checked ? "translate-x-[18px]" : "translate-x-[2px]",
-          )}
-        />
-      </Switch.Root>
-    </div>
-  );
-}
-
 // ─── Share User Search (autocomplete) ───────────────────────────────────────
 
 interface UserSuggestion {
@@ -189,15 +147,8 @@ interface InvitedUser {
   permission: string;
 }
 
-const PERMISSION_KEYS: Record<string, "permissionView" | "permissionComment" | "permissionApprove"> = {
-  view: "permissionView",
-  comment: "permissionComment",
-  approve: "permissionApprove",
-};
-
 function ShareUserSearch({ shareLink }: { shareLink: ShareLink }) {
   const t = useTranslations("shareLinks");
-  const tc = useTranslations("common");
   const [query, setQuery] = React.useState("");
   const [suggestions, setSuggestions] = React.useState<UserSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = React.useState(false);
@@ -428,7 +379,7 @@ function ShareUserSearch({ shareLink }: { shareLink: ShareLink }) {
                 </p>
               </div>
               <span className="text-2xs text-text-tertiary capitalize shrink-0">
-                {t(PERMISSION_KEYS[user.permission] ?? "permissionView")}
+                {user.permission}
               </span>
               <button
                 onClick={async () => {
@@ -576,10 +527,11 @@ export function ShareLinkContent({
   onUpdate,
 }: ShareLinkContentProps) {
   const t = useTranslations("shareLinks");
-  const tc = useTranslations("common");
   const tp = useTranslations("projects");
   const tf = useTranslations("folderCard");
-  const { shareLink, immediateUpdate } = useShareLinkData(token);
+  const tc = useTranslations("common");
+  const locale = useLocale();
+  const { shareLink, immediateUpdate, appearance } = useShareLinkData(token);
 
   const [localTitle, setLocalTitle] = React.useState("");
   const [localDescription, setLocalDescription] = React.useState("");
@@ -589,8 +541,19 @@ export function ShareLinkContent({
       name: string;
       thumbnail_url: string | null;
       asset_type: string;
+      file_size: number | null;
+      created_at: string;
     }[]
   >([]);
+  // The page takes the project's branding (logo, colour, footer) for every
+  // link type, so the preview reads it from the same place the API does.
+  const [projectBranding, setProjectBranding] = React.useState<ProjectBranding | null>(null);
+  const { data: project } = useSWR<Project>(`/projects/${projectId}`, (key: string) =>
+    api.get<Project>(key),
+  );
+  const { primaryColor: instanceAccent } = useBranding();
+  // The link's whole asset count, for the label: the preview shows six.
+  const [previewTotal, setPreviewTotal] = React.useState(0);
   const [previewFolders, setPreviewFolders] = React.useState<
     { id: string; name: string; item_count: number }[]
   >([]);
@@ -616,8 +579,19 @@ export function ShareLinkContent({
           name: string;
           asset_type: string;
           thumbnail_url: string | null;
+          file_size?: number | null;
+          created_at?: string;
         }>(`/assets/${shareLink.asset_id}`)
-        .then((asset) => setPreviewThumbnails([asset]))
+        .then((asset) => {
+          setPreviewTotal(1);
+          setPreviewThumbnails([
+            {
+              ...asset,
+              file_size: asset.file_size ?? null,
+              created_at: asset.created_at ?? "",
+            },
+          ]);
+        })
         .catch(() => setPreviewThumbnails([]));
       setPreviewFolders([]);
     } else if (folderId || isProjectShare) {
@@ -629,15 +603,21 @@ export function ShareLinkContent({
         const t = localStorage.getItem('ff_access_token');
         if (t) headers['Authorization'] = `Bearer ${t}`;
       } catch {}
-      fetch(`${API_URL}/share/${token}/assets?page=1&per_page=50`, { headers })
+      fetch(`${API_URL}/share/${token}/assets?page=1&per_page=${SHARE_ASSETS_PAGE_SIZE}`, { headers })
         .then((r) => r.ok ? r.json() : Promise.reject())
         .then((data) => {
+          setPreviewTotal(data.total ?? (data.assets || []).length);
           setPreviewThumbnails(
-            (data.assets || []).slice(0, 4).map((a: any) => ({
+            // The share page's first page, kept whole: the appearance sort is
+            // applied at render, before the slice to six, as the page sorts
+            // what it has loaded.
+            (data.assets || []).map((a: any) => ({
               id: a.id,
               name: a.name,
               asset_type: a.asset_type,
               thumbnail_url: a.thumbnail_url,
+              file_size: a.file_size ?? null,
+              created_at: a.created_at ?? "",
             }))
           );
           setPreviewFolders(
@@ -655,7 +635,67 @@ export function ShareLinkContent({
     }
   }, [shareLink, projectId]);
 
-  const shareUrl = `${frontendUrl}/share/${token}`;
+  const isAssetLink = !!shareLink?.asset_id;
+  React.useEffect(() => {
+    let cancelled = false;
+    api
+      .get<ProjectBranding>(`/projects/${projectId}/branding`)
+      .then((b) => !cancelled && setProjectBranding(b ?? null))
+      .catch(() => !cancelled && setProjectBranding(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  const shareUrl = `${frontendUrl}${withBasePath(`/share/${token}`)}`;
+
+  // Mirror how the share page itself renders this link (folder-share-viewer):
+  // card size picks the grid columns, aspect ratio and fit/fill the thumbnail
+  // box and image, card info the name strip, layout the grid-vs-list switch,
+  // and the same client-side sort orders assets. The settings panel mutates
+  // the same SWR key, so a save re-renders this preview immediately.
+  // Theme and accent apply to the preview frame alone: `data-theme` swaps the
+  // palette for that subtree, and the accent goes on it as inline variables,
+  // so the app around it keeps its own. The accent resolves as the share page
+  // does (useShareAppearance): the link's own, then the project's, then the
+  // instance branding, else the theme's built-in one. The logo is the one the
+  // share API sends, and the footer shows where the page has one: every link
+  // type but a single asset, whose review screen has no footer.
+  const previewTheme = appearance.theme === "light" ? "light" : "dark";
+  const previewAccent =
+    appearance.accent_color ?? projectBranding?.primary_color ?? instanceAccent;
+  const previewLogo = resolveShareLogoUrl({
+    useCoverAsLogo: projectBranding?.use_cover_as_logo ?? false,
+    coverUrl: project?.poster_url,
+    logoUrl: projectBranding?.logo_url,
+  });
+  const previewFooter = isAssetLink ? undefined : (projectBranding?.custom_footer ?? null);
+  const isGridLayout = appearance.layout !== "list";
+  const cardSize = appearance.card_size ?? "m";
+  // The page scales its grid against the viewport; this preview lives in a
+  // fixed-width pane, so keep the same relative steps at panel scale.
+  const gridCols =
+    cardSize === "s" ? "grid-cols-4" : cardSize === "l" ? "grid-cols-2" : "grid-cols-3";
+  const aspectClass =
+    appearance.aspect_ratio === "square"
+      ? "aspect-square"
+      : appearance.aspect_ratio === "portrait"
+        ? "aspect-[3/4]"
+        : "aspect-[16/10]";
+  const thumbnailScale = appearance.thumbnail_scale ?? "fill";
+  const showCardInfo = appearance.show_card_info !== false;
+
+  const sortedPreviewAssets = React.useMemo(() => {
+    const list = [...previewThumbnails];
+    const sortBy = appearance.sort_by ?? "created_at";
+    list.sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "file_size") return (b.file_size ?? 0) - (a.file_size ?? 0);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    return list;
+  }, [previewThumbnails, appearance.sort_by]);
+  const shownAssets = sortedPreviewAssets.slice(0, 6);
 
   if (!shareLink) {
     return (
@@ -708,95 +748,147 @@ export function ShareLinkContent({
           className="w-full bg-transparent text-sm text-text-secondary placeholder:text-text-tertiary outline-none border-none resize-none focus:ring-0"
         />
 
-        {/* Content preview — matches project view style */}
-        {previewFolders.length > 0 || previewThumbnails.length > 0 ? (
-          <div className="space-y-4">
-            {/* Folders */}
-            {previewFolders.length > 0 && (
-              <>
-                <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">
-                  {tp("folderCount", { count: previewFolders.length })}
-                </span>
-                <div className="grid grid-cols-3 gap-3">
-                  {previewFolders.map((folder) => (
-                    <div
-                      key={folder.id}
-                      className="rounded-lg border border-border bg-bg-tertiary/50 overflow-hidden"
-                    >
-                      <div className="aspect-[4/3] flex items-center justify-center bg-bg-tertiary">
-                        <svg
-                          className="h-10 w-10 text-text-tertiary/50"
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+        {/* Content preview — the link as its page renders it, in the link's
+            own theme and accent */}
+        <SharePagePreviewFrame
+          theme={previewTheme}
+          accent={previewAccent}
+          projectLogoUrl={previewLogo}
+          title={shareLink.title || t("untitledShareLink")}
+          allowDownload={!!shareLink.allow_download}
+          footer={previewFooter}
+        >
+          {previewFolders.length > 0 || previewThumbnails.length > 0 ? (
+            <div className="space-y-4">
+              {/* Folders */}
+              {previewFolders.length > 0 && (
+                <>
+                  <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">
+                    {tp("folderCount", { count: previewFolders.length })}
+                  </span>
+                  <div className={cn("grid gap-3", gridCols)}>
+                    {previewFolders.map((folder) => (
+                      <div
+                        key={folder.id}
+                        className="rounded-lg border border-border bg-bg-tertiary/50 overflow-hidden"
+                      >
+                        <div className="aspect-[4/3] flex items-center justify-center bg-bg-tertiary">
+                          <svg
+                            className="h-10 w-10 text-text-tertiary/50"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </div>
+                        <div className="px-3 py-2">
+                          <p className="text-sm font-medium text-text-primary truncate">
+                            {folder.name}
+                          </p>
+                          <p className="text-xs text-text-tertiary mt-0.5">
+                            {tf("itemCount", { count: folder.item_count })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {/* Assets — rendered the way the link's appearance says */}
+              {shownAssets.length > 0 && (
+                <>
+                  <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">
+                    {tp("assetCount", { count: Math.max(previewTotal, shownAssets.length) })}
+                  </span>
+                  {isGridLayout ? (
+                    <div className={cn("grid gap-3", gridCols)}>
+                      {shownAssets.map((asset) => (
+                        <div
+                          key={asset.id}
+                          className="rounded-lg border border-border bg-bg-tertiary/50 overflow-hidden"
                         >
-                          <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
-                        </svg>
-                      </div>
-                      <div className="px-3 py-2">
-                        <p className="text-sm font-medium text-text-primary truncate">
-                          {folder.name}
-                        </p>
-                        <p className="text-xs text-text-tertiary mt-0.5">
-                          {tf("itemCount", { count: folder.item_count })}
-                        </p>
-                      </div>
+                          <div
+                            className={cn(
+                              "bg-bg-tertiary flex items-center justify-center overflow-hidden",
+                              aspectClass,
+                            )}
+                          >
+                            {asset.thumbnail_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={asset.thumbnail_url}
+                                alt={asset.name}
+                                className={cn(
+                                  "h-full w-full",
+                                  thumbnailScale === "fill"
+                                    ? "object-cover"
+                                    : "object-contain",
+                                )}
+                              />
+                            ) : (
+                              <Eye className="h-8 w-8 text-text-tertiary/40" />
+                            )}
+                          </div>
+                          {showCardInfo && (
+                            <div className="px-3 py-2">
+                              <p className="text-sm font-medium text-text-primary truncate">
+                                {asset.name}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-            {/* Assets */}
-            {previewThumbnails.length > 0 && (
-              <>
-                <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">
-                  {tp("assetCount", { count: previewThumbnails.length })}
-                </span>
-                <div className="grid grid-cols-3 gap-3">
-                  {previewThumbnails.slice(0, 6).map((asset) => (
-                    <div
-                      key={asset.id}
-                      className="rounded-lg border border-border bg-bg-tertiary/50 overflow-hidden"
-                    >
-                      <div className="aspect-[16/10] bg-bg-tertiary flex items-center justify-center overflow-hidden">
-                        {asset.thumbnail_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={asset.thumbnail_url}
-                            alt={asset.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <Eye className="h-8 w-8 text-text-tertiary/40" />
-                        )}
-                      </div>
-                      <div className="px-3 py-2">
-                        <p className="text-sm font-medium text-text-primary truncate">
-                          {asset.name}
-                        </p>
-                      </div>
+                  ) : (
+                    // Same list layout the share page switches to.
+                    <div className="rounded-lg border border-border overflow-hidden divide-y divide-border">
+                      {shownAssets.map((asset) => (
+                        <div
+                          key={asset.id}
+                          className="flex items-center gap-3 px-3 py-2"
+                        >
+                          <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-bg-tertiary">
+                            {asset.thumbnail_url ? (
+                              // Always cropped, as the share page's list rows
+                              // are (ListRowThumb): Fit/Fill is a grid setting.
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={asset.thumbnail_url}
+                                alt={asset.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Eye className="absolute inset-0 m-auto h-4 w-4 text-text-tertiary/40" />
+                            )}
+                          </div>
+                          <p className="min-w-0 flex-1 truncate text-sm text-text-primary">
+                            {asset.name}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-border bg-bg-tertiary/50 p-8 flex flex-col items-center justify-center text-center space-y-3">
-            <div className="h-12 w-12 rounded-full bg-bg-tertiary flex items-center justify-center">
-              <Eye className="h-6 w-6 text-text-tertiary" />
+                  )}
+                </>
+              )}
             </div>
-            <p className="text-sm font-medium text-text-primary">
-              {t("noContent")}
-            </p>
-          </div>
-        )}
+          ) : (
+            <div className="rounded-xl border border-border bg-bg-tertiary/50 p-8 flex flex-col items-center justify-center text-center space-y-3">
+              <div className="h-12 w-12 rounded-full bg-bg-tertiary flex items-center justify-center">
+                <Eye className="h-6 w-6 text-text-tertiary" />
+              </div>
+              <p className="text-sm font-medium text-text-primary">
+                No content yet
+              </p>
+            </div>
+          )}
+        </SharePagePreviewFrame>
 
         {/* Action buttons */}
         <div className="flex items-center gap-3">
@@ -819,7 +911,6 @@ export function ShareLinkContent({
 export function ShareLinkSettingsPanel({ token }: ShareLinkSettingsPanelProps) {
   const t = useTranslations("shareLinks");
   const tc = useTranslations("common");
-  const ta = useTranslations("appearance");
   const locale = useLocale();
   const {
     shareLink,
@@ -835,20 +926,18 @@ export function ShareLinkSettingsPanel({ token }: ShareLinkSettingsPanelProps) {
   const [localPassword, setLocalPassword] = React.useState("");
   const [passwordEnabled, setPasswordEnabled] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
-  const [localAccentColor, setLocalAccentColor] = React.useState("");
 
   React.useEffect(() => {
     if (shareLink) {
       setPasswordEnabled(shareLink.has_password ?? false);
       setLocalPassword(shareLink.password_value || "");
-      setLocalAccentColor(shareLink.appearance?.accent_color || "");
     }
   }, [shareLink]);
 
   const shareUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/share/${token}`
-      : `/share/${token}`;
+      ? `${window.location.origin}${withBasePath(`/share/${token}`)}`
+      : withBasePath(`/share/${token}`);
 
   if (!shareLink) {
     return (
@@ -1022,17 +1111,11 @@ export function ShareLinkSettingsPanel({ token }: ShareLinkSettingsPanelProps) {
                   <Calendar className="h-3.5 w-3.5 text-text-tertiary" />
                   <input
                     type="date"
-                    value={
-                      shareLink.expires_at
-                        ? new Date(shareLink.expires_at)
-                            .toISOString()
-                            .split("T")[0]
-                        : ""
-                    }
+                    value={dateInputValue(shareLink.expires_at)}
                     onChange={(e) => {
                       const val = e.target.value;
                       immediateUpdate({
-                        expires_at: val ? new Date(val).toISOString() : null,
+                        expires_at: val ? endOfDayISO(val) : null,
                       });
                     }}
                     className="w-[130px] rounded border border-border bg-bg-tertiary px-2 py-1 text-xs text-text-primary outline-none focus:border-accent/50 [color-scheme:auto]"
@@ -1050,218 +1133,19 @@ export function ShareLinkSettingsPanel({ token }: ShareLinkSettingsPanelProps) {
               />
             </Section>
 
-            {/* Appearance */}
+            {/* Appearance — the same block the create dialog shows, minus the
+                current-view copy: editing a saved link, there is no folder view
+                on screen to copy from. An asset link gets only theme and accent. */}
             <Section
-              title={ta("title")}
+              title={t("appearance")}
               icon={<Paintbrush className="h-3.5 w-3.5" />}
               defaultOpen={false}
             >
-              {/* Layout — Grid / List */}
-              <div className="space-y-1.5">
-                <p className="text-xs text-text-secondary">{ta("layout")}</p>
-                <div className="flex gap-2">
-                  {(["grid", "list"] as const).map((layout) => (
-                    <button
-                      key={layout}
-                      onClick={() => updateAppearance({ layout })}
-                      className={cn(
-                        "flex-1 flex flex-col items-center gap-1.5 rounded-lg border py-3 text-xs font-medium capitalize transition-colors",
-                        appearance.layout === layout
-                          ? "bg-accent/10 border-accent text-accent"
-                          : "border-border text-text-secondary hover:text-text-primary hover:border-border-focus",
-                      )}
-                    >
-                      {layout === "grid" ? (
-                        <LayoutGrid className="h-4 w-4" />
-                      ) : (
-                        <LayoutList className="h-4 w-4" />
-                      )}
-                      {layout === "grid" ? ta("grid") : ta("list")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Open in viewer */}
-              <ToggleRow
-                label={t("openInViewer")}
-                description={t("openInViewerDesc")}
-                checked={appearance.open_in_viewer}
-                onCheckedChange={(checked) =>
-                  updateAppearance({ open_in_viewer: checked })
-                }
+              <ShareAppearanceFields
+                appearance={appearance}
+                kind={shareLink.asset_id ? "asset" : "collection"}
+                onChange={updateAppearance}
               />
-
-              {/* Theme — Dark / Light */}
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-text-primary">{ta("theme")}</p>
-                <div className="flex rounded-lg border border-border overflow-hidden">
-                  {(["dark", "light"] as const).map((theme) => (
-                    <button
-                      key={theme}
-                      onClick={() => updateAppearance({ theme })}
-                      className={cn(
-                        "px-4 py-1.5 text-xs font-medium capitalize transition-colors",
-                        appearance.theme === theme
-                          ? "bg-accent text-text-inverse"
-                          : "text-text-secondary hover:text-text-primary",
-                      )}
-                    >
-                      {theme === "dark" ? "🌙" : "☀️"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Accent color */}
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-text-primary">{ta("accentColor")}</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-tertiary">#</span>
-                  <input
-                    type="text"
-                    value={localAccentColor}
-                    onChange={(e) => setLocalAccentColor(e.target.value)}
-                    onBlur={() => {
-                      const color = localAccentColor.trim() || null;
-                      if (color !== (appearance.accent_color || "")) {
-                        updateAppearance({
-                          accent_color: color
-                            ? `#${color.replace("#", "")}`
-                            : null,
-                        });
-                      }
-                    }}
-                    placeholder={ta("none")}
-                    maxLength={7}
-                    className="w-20 rounded border border-border bg-bg-tertiary px-2 py-1 text-xs text-text-primary placeholder:text-text-tertiary outline-none focus:border-accent/50 font-mono"
-                  />
-                  <label className="relative h-6 w-6 rounded-full border border-border cursor-pointer overflow-hidden shrink-0">
-                    <div
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        backgroundColor: localAccentColor
-                          ? `#${localAccentColor.replace("#", "")}`
-                          : "#6366f1",
-                      }}
-                    />
-                    <input
-                      type="color"
-                      value={
-                        localAccentColor
-                          ? `#${localAccentColor.replace("#", "")}`
-                          : "#6366f1"
-                      }
-                      onChange={(e) => {
-                        const hex = e.target.value.replace("#", "");
-                        setLocalAccentColor(hex);
-                        updateAppearance({ accent_color: `#${hex}` });
-                      }}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Card Size — S / M / L */}
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-text-primary">{ta("cardSize")}</p>
-                <div className="flex rounded-lg border border-border overflow-hidden">
-                  {(["s", "m", "l"] as const).map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => updateAppearance({ card_size: size })}
-                      className={cn(
-                        "px-4 py-1.5 text-xs font-medium uppercase transition-colors",
-                        (appearance.card_size || "m") === size
-                          ? "bg-accent text-text-inverse"
-                          : "text-text-secondary hover:text-text-primary",
-                      )}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Aspect Ratio */}
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-text-primary">{ta("aspectRatio")}</p>
-                <div className="flex rounded-lg border border-border overflow-hidden">
-                  {[
-                    { value: "landscape" as const, icon: "▭" },
-                    { value: "square" as const, icon: "□" },
-                    { value: "portrait" as const, icon: "▯" },
-                  ].map(({ value, icon }) => (
-                    <button
-                      key={value}
-                      onClick={() => updateAppearance({ aspect_ratio: value })}
-                      className={cn(
-                        "px-4 py-1.5 text-sm transition-colors",
-                        (appearance.aspect_ratio || "landscape") === value
-                          ? "bg-accent text-text-inverse"
-                          : "text-text-secondary hover:text-text-primary",
-                      )}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Thumbnail Scale — Fit / Fill */}
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-text-primary">{ta("thumbnailScale")}</p>
-                <div className="flex rounded-lg border border-border overflow-hidden">
-                  {(["fit", "fill"] as const).map((scale) => (
-                    <button
-                      key={scale}
-                      onClick={() =>
-                        updateAppearance({ thumbnail_scale: scale })
-                      }
-                      className={cn(
-                        "px-4 py-1.5 text-xs font-medium capitalize transition-colors",
-                        (appearance.thumbnail_scale || "fill") === scale
-                          ? "bg-accent text-text-inverse"
-                          : "text-text-secondary hover:text-text-primary",
-                      )}
-                    >
-                      {scale === "fit" ? ta("fit") : ta("fill")}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Show Card Info */}
-              <ToggleRow
-                label={ta("showCardInfo")}
-                description={ta("showCardInfoDesc")}
-                checked={appearance.show_card_info !== false}
-                onCheckedChange={(checked) =>
-                  updateAppearance({ show_card_info: checked })
-                }
-              />
-            </Section>
-
-            {/* Sort By */}
-            <Section
-              title={ta("sortBy")}
-              icon={<Layers className="h-3.5 w-3.5" />}
-              defaultOpen={false}
-            >
-              <select
-                value={appearance.sort_by}
-                onChange={(e) =>
-                  updateAppearance({
-                    sort_by: e.target.value as ShareLinkAppearance["sort_by"],
-                  })
-                }
-                className="w-full rounded-md border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent/50 [color-scheme:auto]"
-              >
-                <option value="name">{ta("sortName")}</option>
-                <option value="created_at">{ta("sortDateCreated")}</option>
-                <option value="file_size">{ta("sortSize")}</option>
-              </select>
             </Section>
           </div>
         ) : (

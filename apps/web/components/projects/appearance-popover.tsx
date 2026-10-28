@@ -2,120 +2,90 @@
 
 import * as React from 'react'
 import * as Popover from '@radix-ui/react-popover'
-import * as Switch from '@radix-ui/react-switch'
+import { useTranslations } from 'next-intl'
 import {
   LayoutGrid, List, RectangleHorizontal, Square, RectangleVertical,
-  ChevronDown, SlidersHorizontal,
+  SlidersHorizontal,
 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { cn } from '@/lib/utils'
+import {
+  SegmentRow,
+  SelectRow,
+  ToggleRow as BaseToggleRow,
+} from '@/components/ui/setting-controls'
 import {
   useViewStore,
   type ViewLayout, type CardSize, type AspectRatio,
   type ThumbnailScale, type TitleLines,
 } from '@/stores/view-store'
 
-// ─── Segmented control ──────────────────────────────────────────────────────
+// ─── Rows ───────────────────────────────────────────────────────────────────
+// The controls live in components/ui/setting-controls, shared with a share
+// link's Appearance block. This popover's frame is always dark, hence `overlay`.
 
-interface SegmentOption<T extends string> {
-  value: T
-  label?: string
-  icon?: React.ReactNode
+export function ToggleRow(props: Omit<React.ComponentProps<typeof BaseToggleRow>, 'tone'>) {
+  return <BaseToggleRow {...props} tone="overlay" />
 }
 
-function Segment<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: SegmentOption<T>[]
-  value: T
-  onChange: (v: T) => void
-}) {
+export function LayoutRow({ value, onChange }: { value: ViewLayout; onChange: (v: ViewLayout) => void }) {
+  const t = useTranslations('appearance')
   return (
-    <div className="flex rounded-md border border-white/10 overflow-hidden">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={cn(
-            'flex items-center justify-center px-3 py-1.5 text-xs transition-colors min-w-[36px]',
-            value === opt.value
-              ? 'bg-accent text-white'
-              : 'bg-white/5 text-text-tertiary hover:text-text-secondary hover:bg-white/10',
-          )}
-        >
-          {opt.icon ?? opt.label}
+    <SegmentRow<ViewLayout>
+      label={t('layout')}
+      tone="overlay"
+      options={[
+        { value: 'grid', icon: <LayoutGrid className="h-3.5 w-3.5" />, ariaLabel: t('grid') },
+        { value: 'list', icon: <List className="h-3.5 w-3.5" />, ariaLabel: t('list') },
+      ]}
+      value={value}
+      onChange={onChange}
+    />
+  )
+}
+
+export function CardSizeRow({ value, onChange }: { value: CardSize; onChange: (v: CardSize) => void }) {
+  const t = useTranslations('appearance')
+  return (
+    <SegmentRow<CardSize>
+      label={t('cardSize')}
+      tone="overlay"
+      options={[
+        { value: 'S', label: 'S' },
+        { value: 'M', label: 'M' },
+        { value: 'L', label: 'L' },
+      ]}
+      value={value}
+      onChange={onChange}
+    />
+  )
+}
+
+// ─── Popover frame ──────────────────────────────────────────────────────────
+
+export function AppearancePopoverFrame({ children }: { children: React.ReactNode }) {
+  const t = useTranslations('appearance')
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors">
+          <SlidersHorizontal className="h-4 w-4" />
+          {t('title')}
         </button>
-      ))}
-    </div>
-  )
-}
+      </Popover.Trigger>
 
-// ─── Toggle switch row ──────────────────────────────────────────────────────
-
-function ToggleRow({
-  label,
-  checked,
-  onCheckedChange,
-}: {
-  label: string
-  checked: boolean
-  onCheckedChange: (v: boolean) => void
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-text-secondary">{label}</span>
-      <Switch.Root
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        className={cn(
-          'relative h-5 w-9 rounded-full transition-colors outline-none',
-          checked ? 'bg-accent' : 'bg-white/15',
-        )}
-      >
-        <Switch.Thumb
-          className={cn(
-            'block h-4 w-4 rounded-full bg-white transition-transform',
-            checked ? 'translate-x-[18px]' : 'translate-x-[2px]',
-          )}
-        />
-      </Switch.Root>
-    </div>
-  )
-}
-
-// ─── Select dropdown row ────────────────────────────────────────────────────
-
-function SelectRow({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-text-secondary">{label}</span>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="appearance-none bg-white/5 border border-white/10 rounded-md pl-2.5 pr-7 py-1 text-xs text-text-primary outline-none cursor-pointer hover:bg-white/10 transition-colors"
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          className="z-50 w-72 rounded-xl border border-white/10 bg-[#1a1a1f] shadow-2xl p-4 space-y-4
+            data-[state=open]:animate-in data-[state=closed]:animate-out
+            data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
+            data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
         >
-          {options.map((o) => (
-            <option key={o.value} value={o.value} className="bg-[#232328]">
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-text-tertiary pointer-events-none" />
-      </div>
-    </div>
+          {children}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }
 
@@ -136,114 +106,70 @@ export function AppearancePopover() {
   } = useViewStore()
 
   return (
-    <Popover.Root>
-      <Popover.Trigger asChild>
-        <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 transition-colors">
-          <SlidersHorizontal className="h-4 w-4" />
-          {t('title')}
-        </button>
-      </Popover.Trigger>
+    <AppearancePopoverFrame>
+      <LayoutRow value={layout} onChange={setLayout} />
 
-      <Popover.Portal>
-        <Popover.Content
-          side="bottom"
-          align="start"
-          sideOffset={6}
-          className="z-50 w-72 rounded-xl border border-white/10 bg-[#1a1a1f] shadow-2xl p-4 space-y-4
-            data-[state=open]:animate-in data-[state=closed]:animate-out
-            data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0
-            data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
-        >
-          {/* Layout */}
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-text-secondary">{t('layout')}</span>
-            <Segment<ViewLayout>
-              options={[
-                { value: 'grid', icon: <LayoutGrid className="h-3.5 w-3.5" /> },
-                { value: 'list', icon: <List className="h-3.5 w-3.5" /> },
-              ]}
-              value={layout}
-              onChange={setLayout}
-            />
-          </div>
+      {/* Card Size — only in grid mode */}
+      {layout === 'grid' && <CardSizeRow value={cardSize} onChange={setCardSize} />}
 
-          {/* Card Size — only in grid mode */}
-          {layout === 'grid' && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">{t('cardSize')}</span>
-              <Segment<CardSize>
-                options={[
-                  { value: 'S', label: 'S' },
-                  { value: 'M', label: 'M' },
-                  { value: 'L', label: 'L' },
-                ]}
-                value={cardSize}
-                onChange={setCardSize}
-              />
-            </div>
-          )}
+      {/* Aspect Ratio — only in grid mode */}
+      {layout === 'grid' && (
+        <SegmentRow<AspectRatio>
+          label={t('aspectRatio')}
+          tone="overlay"
+          options={[
+            { value: 'landscape', icon: <RectangleHorizontal className="h-3.5 w-3.5" />, ariaLabel: t('landscape') },
+            { value: 'square', icon: <Square className="h-3.5 w-3.5" />, ariaLabel: t('square') },
+            { value: 'portrait', icon: <RectangleVertical className="h-3.5 w-3.5" />, ariaLabel: t('portrait') },
+          ]}
+          value={aspectRatio}
+          onChange={setAspectRatio}
+        />
+      )}
 
-          {/* Aspect Ratio — only in grid mode */}
-          {layout === 'grid' && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">{t('aspectRatio')}</span>
-              <Segment<AspectRatio>
-                options={[
-                  { value: 'landscape', icon: <RectangleHorizontal className="h-3.5 w-3.5" /> },
-                  { value: 'square', icon: <Square className="h-3.5 w-3.5" /> },
-                  { value: 'portrait', icon: <RectangleVertical className="h-3.5 w-3.5" /> },
-                ]}
-                value={aspectRatio}
-                onChange={setAspectRatio}
-              />
-            </div>
-          )}
+      {/* Thumbnail Scale — only in grid mode */}
+      {layout === 'grid' && (
+        <SegmentRow<ThumbnailScale>
+          label={t('thumbnailScale')}
+          tone="overlay"
+          options={[
+            { value: 'fit', label: t('fit') },
+            { value: 'fill', label: t('fill') },
+          ]}
+          value={thumbnailScale}
+          onChange={setThumbnailScale}
+        />
+      )}
 
-          {/* Thumbnail Scale — only in grid mode */}
-          {layout === 'grid' && (
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-text-secondary">{t('thumbnailScale')}</span>
-              <Segment<ThumbnailScale>
-                options={[
-                  { value: 'fit', label: t('fit') },
-                  { value: 'fill', label: t('fill') },
-                ]}
-                value={thumbnailScale}
-                onChange={setThumbnailScale}
-              />
-            </div>
-          )}
+      {/* Show Card Info */}
+      <ToggleRow label={t('showCardInfo')} checked={showCardInfo} onCheckedChange={setShowCardInfo} />
 
-          {/* Show Card Info */}
-          <ToggleRow label={t('showCardInfo')} checked={showCardInfo} onCheckedChange={setShowCardInfo} />
+      {/* Titles */}
+      {showCardInfo && (
+        <SelectRow<TitleLines>
+          label={t('titles')}
+          tone="overlay"
+          value={titleLines}
+          options={[
+            { value: '1', label: t('oneLine') },
+            { value: '2', label: t('twoLines') },
+            { value: '3', label: t('threeLines') },
+          ]}
+          onChange={setTitleLines}
+        />
+      )}
 
-          {/* Titles */}
-          {showCardInfo && (
-            <SelectRow
-              label={t('titles')}
-              value={titleLines}
-              options={[
-                { value: '1', label: t('oneLine') },
-                { value: '2', label: t('twoLines') },
-                { value: '3', label: t('threeLines') },
-              ]}
-              onChange={(v) => setTitleLines(v as TitleLines)}
-            />
-          )}
+      {/* Flatten Folders */}
+      <ToggleRow label={t('flattenFolders')} checked={flattenFolders} onCheckedChange={setFlattenFolders} />
 
-          {/* Flatten Folders */}
-          <ToggleRow label={t('flattenFolders')} checked={flattenFolders} onCheckedChange={setFlattenFolders} />
-
-          {/* Fields section */}
-          <div className="pt-1 border-t border-white/10">
-            <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider mb-2.5">{t('fields')}</p>
-            <div className="space-y-3">
-              <ToggleRow label={t('fileSize')} checked={showFileSize} onCheckedChange={setShowFileSize} />
-              <ToggleRow label={t('uploadedBy')} checked={showUploader} onCheckedChange={setShowUploader} />
-            </div>
-          </div>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+      {/* Fields section */}
+      <div className="pt-1 border-t border-white/10">
+        <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider mb-2.5">{t('fields')}</p>
+        <div className="space-y-3">
+          <ToggleRow label={t('fileSize')} checked={showFileSize} onCheckedChange={setShowFileSize} />
+          <ToggleRow label={t('uploadedBy')} checked={showUploader} onCheckedChange={setShowUploader} />
+        </div>
+      </div>
+    </AppearancePopoverFrame>
   )
 }

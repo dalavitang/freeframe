@@ -4,6 +4,7 @@ import * as React from 'react'
 import { Eye } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
+import { resolveBrandingLogo } from '@/lib/branding-logo'
 import { useBrandingStore } from '@/stores/branding-store'
 import { useResolvedTheme } from '@/hooks/use-resolved-theme'
 import {
@@ -39,15 +40,21 @@ export function BrandingPreview() {
   const theme = useResolvedTheme()
   const [screen, setScreen] = React.useState<ScreenKey>('app')
 
-  const appLogo =
-    theme === 'light' ? orgLogoLight ?? orgLogoDark : orgLogoDark ?? orgLogoLight
-  // Mirrors AuthBrandingHeader: the dedicated login logo wins on auth screens.
-  const authLogo =
-    loginLogoUrl ||
-    (theme === 'dark' ? orgLogoDark ?? orgLogoLight : orgLogoLight ?? orgLogoDark)
-  const logoUrl = screen === 'login' ? authLogo : appLogo
+  const appLogo = resolveBrandingLogo({
+    theme,
+    darkUrl: orgLogoDark,
+    lightUrl: orgLogoLight,
+  })
+  const authLogo = resolveBrandingLogo({
+    theme,
+    darkUrl: orgLogoDark,
+    lightUrl: orgLogoLight,
+    preferredUrl: loginLogoUrl,
+  })
+  const logoUrl = (screen === 'login' ? authLogo : appLogo) ?? null
 
-  // A presigned logo URL that has expired would otherwise leave a broken-image
+  // A logo URL that no longer loads, such as one for a slot that has since been
+  // cleared (the logo route answers 404), would otherwise leave a broken-image
   // glyph exactly where the brand mark belongs. Fall back to the default icon,
   // which is what the real sidebar ends up showing too.
   const [logoErrored, setLogoErrored] = React.useState(false)

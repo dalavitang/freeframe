@@ -37,7 +37,8 @@
     "disabled": "Disabled",
     "on": "On",
     "off": "Off",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "download": "Download"
   },
   "locale": {
     "language": "Language",
@@ -53,7 +54,8 @@
     "search": "Search",
     "hidePanel": "Hide panel",
     "showPanel": "Show panel",
-    "tagline": "Collaborative media review & approval"
+    "tagline": "Collaborative media review & approval",
+    "uploads": "Uploads"
   },
   "nav": {
     "profile": "Profile",
@@ -95,7 +97,8 @@
     "assignment": "{actor} assigned you to {asset}",
     "approval": "{actor} updated approval on {asset}",
     "dueSoon": "{asset} is due soon",
-    "newNotification": "New notification"
+    "newNotification": "New notification",
+    "guestActor": "{name} (guest)"
   },
   "uploads": {
     "title": "Uploads",
@@ -119,10 +122,35 @@
     "statusCancelled": "Cancelled",
     "progressUploading": "Uploading {percent}%",
     "progressProcessing": "Processing {percent}%",
-    "processingEllipsis": "Processing...",
+    "processingEllipsis": "Processing…",
     "cancelUpload": "Cancel upload",
     "remove": "Remove",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "queuedCount": "{count} queued",
+    "statusResuming": "Resuming",
+    "statusStarting": "Starting",
+    "statusFinalizing": "Finalizing",
+    "statusInterrupted": "Interrupted",
+    "statusElsewhere": "Elsewhere",
+    "waitingForConnection": "Waiting for connection",
+    "waitingForStorage": "Waiting for storage",
+    "waitingToStart": "Waiting to start",
+    "waitingToResume": "Waiting to resume",
+    "stillUploadingElsewhere": "Still uploading in another tab or on another device",
+    "transferStopped": "Transfer stopped · resume to send only what is missing",
+    "resumePick": "Resume — pick {name} again",
+    "resumeNamed": "Resume {name}",
+    "discardHint": "Discard this upload and free the space it is holding",
+    "discardTitle": "Discard {name}?",
+    "discardDescription": "The parts already sent are deleted now and cannot be recovered. To finish this upload instead, resume it.",
+    "discard": "Discard",
+    "cancelUploadNamed": "Cancel upload of {name}",
+    "retry": "Retry",
+    "retryNamed": "Retry {name}",
+    "cancelAllQueued": "Cancel all queued",
+    "finalizingEllipsis": "Finalizing…",
+    "startingEllipsis": "Starting…",
+    "resumingEllipsis": "Resuming…"
   },
   "keyboardShortcuts": {
     "title": "Keyboard Shortcuts",
@@ -148,7 +176,15 @@
     "goAssets": "Go to assets",
     "focusCommentInput": "Focus comment input",
     "cancelComment": "Cancel comment / close panel",
-    "footerHint": "Press <kbd>?</kbd> anytime to toggle this panel"
+    "footerHint": "Press <kbd>?</kbd> anytime to toggle this panel",
+    "groupProject": "Project",
+    "selectAll": "Select all",
+    "selectRange": "Select a range of folders or assets",
+    "toggleSelection": "Add / remove a folder or asset from the selection",
+    "deselectAll": "Deselect all",
+    "postComment": "Post comment",
+    "newLine": "New line",
+    "cancelReply": "Cancel reply"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -199,7 +235,13 @@
     "deleteConfirm": "Delete \"{name}\"? This action cannot be undone.",
     "settingsTitle": "Project Settings",
     "project": "Project",
-    "selectItemsToShare": "Select items to share"
+    "selectItemsToShare": "Select items to share",
+    "openInNewTab": "Open in New Tab",
+    "copyLink": "Copy Link",
+    "deleteProject": "Delete Project",
+    "selectedMenuCount": "{count} items selected",
+    "createShareLink": "Create Share Link",
+    "moveToEllipsis": "Move to…"
   },
   "assetCard": {
     "createShareLink": "Create Share Link",
@@ -230,7 +272,9 @@
     "renameTitle": "Rename Folder",
     "namePlaceholder": "Folder name",
     "deleteTitle": "Delete \"{name}\"?",
-    "deleteDescription": "This folder and all its contents will be moved to trash. You can restore them later."
+    "deleteDescription": "This folder and all its contents will be moved to trash. You can restore them later.",
+    "createShareLink": "Create Share Link",
+    "newSubfolder": "New Subfolder"
   },
   "folderTree": {
     "newSubfolder": "New Subfolder",
@@ -320,7 +364,15 @@
     "name": "Name",
     "type": "Type",
     "optionsCol": "Options",
-    "requiredCol": "Required"
+    "requiredCol": "Required",
+    "tabGeneral": "General",
+    "tabPeople": "People",
+    "tabDanger": "Danger",
+    "loadFailed": "This project could not be loaded",
+    "retry": "Retry",
+    "ownerOnly": "Only the project owner can change settings.",
+    "loadingSettings": "Loading project settings",
+    "pageTitle": "{name} settings"
   },
   "roles": {
     "owner": "Owner",
@@ -428,7 +480,29 @@
     "views": "Views",
     "activity": "Activity",
     "viewActivity": "View Activity",
-    "shareCount": "{count, plural, one {# Share} other {# Shares}}"
+    "shareCount": "{count, plural, one {# Share} other {# Shares}}",
+    "renditionOriginal": "Original",
+    "renditionTranscode": "Transcode",
+    "renditionOther": "Other",
+    "appearance": "Appearance",
+    "createShareLink": "Create Share Link",
+    "shareLinkCreated": "Share Link Created",
+    "linksToAsset": "Links to this asset",
+    "addToAnother": "Add to another share link",
+    "accessDisabled": "Access disabled",
+    "expired": "Expired",
+    "indirectLink": "Through a folder or the whole project",
+    "copyLinkNamed": "Copy link {name}",
+    "assetFallback": "Asset",
+    "addFailed": "Could not add to this link",
+    "addedToLink": "Added to this link",
+    "alreadyInLink": "Already in this link",
+    "layout": "Layout",
+    "share": "Share",
+    "newShareLink": "New Share Link",
+    "searchShareLinks": "Search {count} Share Links",
+    "noMatchingShareLinks": "No matching share links",
+    "noShareLinksYet": "No share links yet"
   },
   "sort": {
     "sortedBy": "Sorted by",
@@ -438,7 +512,9 @@
     "status": "Status",
     "type": "Type",
     "asc": "A-Z",
-    "desc": "Z-A"
+    "desc": "Z-A",
+    "oldest": "Oldest",
+    "newest": "Newest"
   },
   "appearance": {
     "title": "Appearance",
@@ -466,7 +542,10 @@
     "sortName": "Name",
     "sortDateCreated": "Date created",
     "sortSize": "Size",
-    "showCardInfoDesc": "Display name, type, and size below thumbnail"
+    "showCardInfoDesc": "Display name, type, and size below thumbnail",
+    "landscape": "Landscape",
+    "square": "Square",
+    "portrait": "Portrait"
   },
   "auth": {
     "login": {
@@ -502,7 +581,8 @@
       "signInTitle": "Magic code sign-in",
       "magicLinkDescription": "Enter your email and we''ll send you a sign-in code.",
       "sendMagicCode": "Send magic code",
-      "signInWithPassword": "Back to password sign-in"
+      "signInWithPassword": "Sign in with password instead",
+      "codeSentIfAccount": "If <highlight>{email}</highlight> has an account, a 6-digit code is on its way."
     },
     "setup": {
       "emailRequired": "Email is required",
@@ -610,7 +690,8 @@
     "commentPosted": "Comment posted!",
     "comment": "Comment",
     "bothNameEmailRequired": "Both name and email are required.",
-    "validEmail": "Please enter a valid email address."
+    "validEmail": "Please enter a valid email address.",
+    "noCommentsYet": "No comments yet"
   },
   "annotation": {
     "pen": "Pencil",
@@ -667,7 +748,10 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "actualSize": "Actual size",
-    "fitToScreen": "Fit to screen"
+    "fitToScreen": "Fit to screen",
+    "moreControls": "More controls",
+    "speed": "Speed",
+    "qualityNamed": "Quality {quality}"
   },
   "versionSwitcher": {
     "version": "Version:",
@@ -859,7 +943,8 @@
     "firstProject": "Create your first project",
     "firstProjectHint": "Organize and review your media assets",
     "noAssetsYet": "No assets yet",
-    "member": "Member"
+    "member": "Member",
+    "cancel": "Cancel"
   },
   "projectDetail": {
     "assets": "Assets",
@@ -893,7 +978,23 @@
     "deleteAssetTitle": "Delete \"{name}\"?",
     "deleteAssetDescription": "This will move the asset to the trash. You can restore it later from Recently Deleted.",
     "bulkDeleteTitle": "Delete {count, plural, one {# item} other {# items}}?",
-    "bulkDeleteDescription": "This will move the selected items to the trash. You can restore them later from Recently Deleted."
+    "bulkDeleteDescription": "This will move the selected items to the trash. You can restore them later from Recently Deleted.",
+    "signInToUpload": "Sign in to upload",
+    "anotherAccountSignedIn": "Another account signed in, so nothing was uploaded",
+    "noUploadPermission": "You don't have permission to upload to this project",
+    "renameFolderFailed": "Could not rename the folder",
+    "moveItemsFailed": "Could not move the items",
+    "restoreFolderFailed": "Could not restore the folder",
+    "restoreAssetFailed": "Could not restore the asset",
+    "createFolderFailed": "Could not create the folder",
+    "members": "Members",
+    "projectSettings": "Project settings",
+    "dropToUpload": "Drop to upload",
+    "fields": "Fields",
+    "uploadedBy": "Uploaded by",
+    "fileSize": "File size",
+    "assignee": "Assignee",
+    "selectAssetForComments": "Select an asset to view comments"
   },
   "assetPage": {
     "loading": "Loading asset...",
@@ -1099,14 +1200,49 @@
     "emptyDescription": "Users will appear here once they register or are invited.",
     "subtitleInstance": "Configure this instance",
     "subtitleBranding": "Make this instance look like yours",
-    "tabBranding": "Branding"
+    "tabBranding": "Branding",
+    "deletedUserCount": "{count} belonged to a deleted user",
+    "cannotInviteDeleted": "Can't invite {emails}: the email belonged to a deleted user",
+    "user": "User",
+    "actions": "Actions",
+    "copied": "Copied",
+    "link": "Link",
+    "sent": "Sent",
+    "resendInvite": "Resend Invite",
+    "revokeInvite": "Revoke Invite",
+    "deleteUserFailed": "Failed to delete user",
+    "resendInviteFailed": "Failed to resend invite",
+    "deactivateInviteDesc": "Their invite link stops working, they can't sign in, and they're removed from the user list. This email can't be invited again.",
+    "deleteUserDesc": "They'll be removed from the user list and can't sign in. Their comments and activity stay. Give any projects they solely own a new owner first, or nobody will be able to manage them. This email can't be invited again.",
+    "revokeInviteTitle": "Revoke the invite for {email}?",
+    "deleteUserTitle": "Delete {name}?"
   },
   "instanceSettings": {
     "title": "Instance storage",
     "storageLimit": "Storage limit (GB)",
     "zeroUnlimitedPlaceholder": "0 = unlimited",
     "unlimitedHint": "Leave blank or 0 for unlimited.",
-    "saveFailed": "Failed to save"
+    "saveFailed": "Failed to save",
+    "saved": "Saved",
+    "sectionStorage": "Instance storage",
+    "storageLimitLabel": "Storage limit (GB)",
+    "sectionUploads": "Uploads",
+    "uploadPartSize": "Upload part size",
+    "partAutoHint": "Sized from each file: 10 MB parts, larger for big files so they finish quickly.",
+    "partSizeLabel": "Part size (MB)",
+    "partFixedHint": "Between {min} and {max} MB. Files that would need more than 10,000 parts are refused.",
+    "sectionDownloads": "Downloads",
+    "outsideProject": "Outside a project",
+    "originalsHint": "What share-link visitors, visitors to a public project and people an asset is shared with directly can download. Project members can always download the original.",
+    "sectionSignIn": "Sign-in",
+    "defaultLoginMode": "Default sign-in method",
+    "loginModeHint": "What the sign-in page shows first. People can still switch to the other method.",
+    "loginMagicCode": "Magic code",
+    "loginPassword": "Email & password",
+    "partAutomatic": "Automatic",
+    "partFixed": "Fixed",
+    "originalsTranscode": "Transcode only",
+    "originalsBoth": "Original or transcode"
   },
   "brandingTab": {
     "identity": "Identity",
