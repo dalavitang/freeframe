@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { withBasePath } from './lib/base-path'
+import { LOCALE_COOKIE, normalizeLocale } from './lib/i18n'
 
 const PUBLIC_ROUTES = ['/login', '/setup']
 const PUBLIC_PREFIXES = ['/invite/', '/share/']
@@ -22,6 +23,24 @@ function isPublicRoute(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // A shared link can name the language it should open in, e.g.
+  // `/share/<token>?lang=zh`. Persist it in the same cookie the switcher uses,
+  // then redirect to the clean URL so the parameter does not stay in the
+  // address bar or in copied links. The cookie is written before any render,
+  // so the first paint is already in the requested language.
+  const requestedLocale = normalizeLocale(request.nextUrl.searchParams.get('lang'))
+  if (requestedLocale) {
+    const url = request.nextUrl.clone()
+    url.searchParams.delete('lang')
+    const response = NextResponse.redirect(url)
+    response.cookies.set(LOCALE_COOKIE, requestedLocale, {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: 'lax',
+    })
+    return response
+  }
 
   // Always allow public routes
   if (isPublicRoute(pathname)) {

@@ -695,7 +695,11 @@
     "comment": "Comment",
     "bothNameEmailRequired": "Both name and email are required.",
     "validEmail": "Please enter a valid email address.",
-    "noCommentsYet": "No comments yet"
+    "noCommentsYet": "No comments yet",
+    "panel": "Comments panel",
+    "panelCount": "Comments panel, {count} comments",
+    "openPanel": "Open comments",
+    "closePanel": "Close comments"
   },
   "annotation": {
     "pen": "Pencil",

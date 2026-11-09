@@ -9,6 +9,7 @@ import { LocaleInitializer } from "@/components/shared/locale-initializer";
 import { LOCALE_COOKIE, resolveLocale } from "@/lib/i18n";
 import { BrandingHead } from "@/components/shared/branding-head";
 import { BrandingProvider } from "@/components/shared/branding-provider";
+import { GlobalLocaleSwitcher } from "@/components/shared/global-locale-switcher";
 import { getServerBranding } from "@/lib/branding-server";
 import { accentVars } from "@/lib/accent";
 import { withBasePath } from "@/lib/base-path";
@@ -110,6 +111,7 @@ export default async function RootLayout({
             <BrandingHead />
             <ToastProvider>{children}</ToastProvider>
           </BrandingProvider>
+          <GlobalLocaleSwitcher />
         </NextIntlClientProvider>
       </body>
     </html>

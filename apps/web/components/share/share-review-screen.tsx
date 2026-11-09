@@ -11,6 +11,7 @@
  * (#117, #123).
  */
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
 import { ArrowLeft, ChevronDown, Download, Loader2, PanelRightClose, PanelRightOpen } from 'lucide-react'
 import { useReview, type CreateCommentPayload } from '@/components/review/review-provider'
 import { useReviewStore } from '@/stores/review-store'
@@ -104,6 +105,7 @@ function ShareReviewInner({
   token, shareSession, assetName, permission, allowDownload, showVersions, theme, projectLogoUrl, onBack,
   VideoPlayer, ImageViewer, AudioPlayer, CommentPanel, CommentInput, VersionSwitcher,
 }: any) {
+  const t = useTranslations('shareFolder')
   const { asset, versions, isLoading, comments, refetchComments, addComment, togglePlayback } = useReview()
   const { currentVersion, isDrawingMode, focusedCommentId, playheadTime } = useReviewStore()
   // An asset opens on its comments: that pane is the reason an asset link
@@ -233,7 +235,7 @@ function ShareReviewInner({
       setTimeout(() => {
         submitComment(body, timecodeStart, timecodeEnd, annotationData, parentId)
           .then(() => settle?.resolve())
-          .catch((e) => settle?.reject(e instanceof Error ? e : new Error('Failed to post comment')))
+          .catch((e) => settle?.reject(e instanceof Error ? e : new Error(t('failedToPost'))))
       }, 50)
     }
   }, [submitComment])
@@ -316,13 +318,13 @@ function ShareReviewInner({
               load={() => fetchShareDownloadOptions(token, asset.id, shareSession)}
               onPick={(rendition) => handleDownload(token, asset.id, shareSession, rendition)}
             >
-              <button aria-label="Download" className="flex items-center gap-1.5 h-7 px-2 sm:px-3 rounded-md text-xs font-medium text-text-inverse bg-accent hover:bg-accent-hover transition-colors">
-                <Download className="h-3 w-3" /> <span className="hidden sm:inline">Download</span>
+              <button aria-label={t("download")} className="flex items-center gap-1.5 h-7 px-2 sm:px-3 rounded-md text-xs font-medium text-text-inverse bg-accent hover:bg-accent-hover transition-colors">
+                <Download className="h-3 w-3" /> <span className="hidden sm:inline">{t("download")}</span>
                 <ChevronDown className="h-3 w-3 opacity-70" />
               </button>
             </DownloadMenu>
           )}
-          <button onClick={() => (useSheet ? setSheetState(st => (st === 'peek' ? 'half' : 'peek')) : setSidebarOpen(v => !v))} title={panelShown ? 'Hide panel' : 'Show panel'} className="flex items-center justify-center h-8 w-8 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors">
+          <button onClick={() => (useSheet ? setSheetState(st => (st === 'peek' ? 'half' : 'peek')) : setSidebarOpen(v => !v))} title={t(panelShown ? 'hidePanel' : 'showPanel')} className="flex items-center justify-center h-8 w-8 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors">
             {panelShown ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
           </button>
         </div>
@@ -430,18 +432,20 @@ function ShareReviewInner({
 // ─── Guest Identity Prompt ───────────────────────────────────────────────────
 
 function GuestIdentityPrompt({ onSave, onCancel }: { onSave: (name: string, email: string) => void; onCancel: () => void }) {
+  const t = useTranslations('shareFolder')
+  const tc = useTranslations('common')
   const [name, setName] = React.useState('')
   const [email, setEmail] = React.useState('')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-5 shadow-xl">
-        <h3 className="text-sm font-semibold text-text-primary mb-1">Leave a comment</h3>
-        <p className="text-xs text-text-tertiary mb-4">Enter your name and email to comment on this shared asset.</p>
+        <h3 className="text-sm font-semibold text-text-primary mb-1">{t("leaveComment")}</h3>
+        <p className="text-xs text-text-tertiary mb-4">{t("identityDesc")}</p>
         <div className="space-y-3">
           <input
             type="text"
-            placeholder="Your name"
+            placeholder={t("yourName")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-md border border-border bg-bg-tertiary px-3 py-2 text-[16px] [@media(hover:hover)]:text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
@@ -449,7 +453,7 @@ function GuestIdentityPrompt({ onSave, onCancel }: { onSave: (name: string, emai
           />
           <input
             type="email"
-            placeholder="Email address"
+            placeholder={t("emailAddress")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-md border border-border bg-bg-tertiary px-3 py-2 text-[16px] [@media(hover:hover)]:text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:border-accent"
@@ -457,14 +461,14 @@ function GuestIdentityPrompt({ onSave, onCancel }: { onSave: (name: string, emai
         </div>
         <div className="flex items-center justify-end gap-2 mt-4">
           <button onClick={onCancel} className="px-3 py-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors">
-            Cancel
+            {tc("cancel")}
           </button>
           <button
             disabled={!name.trim() || !email.trim()}
             onClick={() => onSave(name.trim(), email.trim())}
             className="px-4 py-1.5 rounded-md bg-accent text-xs font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
           >
-            Continue
+            {t("continue")}
           </button>
         </div>
       </div>

@@ -195,6 +195,7 @@ interface ErrorStateProps {
 }
 
 function ErrorState({ expired }: ErrorStateProps) {
+  const t = useTranslations('share')
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
@@ -209,12 +210,10 @@ function ErrorState({ expired }: ErrorStateProps) {
           </div>
         </div>
         <h1 className="text-sm font-semibold text-text-primary">
-          {expired ? 'Link expired' : 'Link not found'}
+          {expired ? t('linkExpiredTitle') : t('linkNotFoundTitle')}
         </h1>
         <p className="mt-1 text-xs text-text-tertiary">
-          {expired
-            ? 'This share link has expired and is no longer accessible.'
-            : 'This share link is invalid or has been removed.'}
+          {expired ? t('linkExpiredDesc') : t('linkNotFoundDesc')}
         </p>
         <PoweredByBadge className="mt-6" showOrgName />
       </div>

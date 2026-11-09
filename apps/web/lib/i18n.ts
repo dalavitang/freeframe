@@ -13,6 +13,19 @@ export function isLocale(value: string | null | undefined): value is Locale {
   return value === 'en' || value === 'zh'
 }
 
+/**
+ * Normalise a `?lang=` value. Accepts `en`, `zh` and their regional variants
+ * (`en-US`, `zh-CN`, `zh-Hant-TW`), so a share link can carry the language a
+ * recipient should start in. Anything else is ignored rather than coerced.
+ */
+export function normalizeLocale(value: string | null | undefined): Locale | null {
+  if (!value) return null
+  const tag = value.trim().toLowerCase()
+  if (tag === 'en' || tag.startsWith('en-')) return 'en'
+  if (tag === 'zh' || tag.startsWith('zh-')) return 'zh'
+  return null
+}
+
 /** Map a browser language tag (e.g. `zh-CN`, `zh-Hant-TW`) to a supported locale. */
 export function browserLocale(value: string | undefined): Locale {
   if (!value) return 'en'

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
 import { ChevronDown, ChevronUp, Pause, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useKeyboardInset } from '@/hooks/use-keyboard-inset'
@@ -88,6 +89,8 @@ export function MobileCommentSheet({
   composer,
   position = 'absolute',
 }: MobileCommentSheetProps) {
+  const t = useTranslations('comments')
+  const tp = useTranslations('players')
   const rootRef = React.useRef<HTMLDivElement>(null)
   const keyboardInset = useKeyboardInset()
   const [rootHeight, setRootHeight] = React.useState(() =>
@@ -274,7 +277,7 @@ export function MobileCommentSheet({
         // children-presentational, so once aria-label wins over name-from-
         // content the `Comments · N` span is pruned from the accessibility
         // tree — and below md this is the only comment affordance there is.
-        aria-label={commentCount > 0 ? `Comments panel, ${commentCount} comments` : 'Comments panel'}
+        aria-label={commentCount > 0 ? t('panelCount', { count: commentCount }) : t('panel')}
         aria-expanded={state !== 'peek'}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -305,7 +308,7 @@ export function MobileCommentSheet({
           <>
             <button
               type="button"
-              aria-label={isPlaying ? 'Pause' : 'Play'}
+              aria-label={isPlaying ? tp('pause') : tp('play')}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={onTogglePlay}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
@@ -322,7 +325,7 @@ export function MobileCommentSheet({
         </span>
         <button
           type="button"
-          aria-label={state === 'peek' ? 'Open comments' : 'Close comments'}
+          aria-label={state === 'peek' ? t('openPanel') : t('closePanel')}
           disabled={lockedToCompose}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={toggleOpen}

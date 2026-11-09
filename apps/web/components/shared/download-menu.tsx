@@ -3,6 +3,7 @@
 import * as React from 'react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { ChevronRight, Download, Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn, formatBytes } from '@/lib/utils'
 import {
   MenuItem, MenuLabel, MenuSub, MenuSubContent, MenuSubTrigger, menuItemClass,
@@ -21,7 +22,9 @@ export function useDownloadOptions(load: () => Promise<DownloadOption[] | null>)
   const [options, setOptions] = React.useState<DownloadOption[]>([])
   const [state, setState] = React.useState<LoadState>('idle')
   const loadRef = React.useRef(load)
-  loadRef.current = load
+  React.useEffect(() => {
+    loadRef.current = load
+  }, [load])
 
   // Re-asked on every open: a version can finish transcoding while the page
   // sits there, and the menu should then offer what it now has.
@@ -78,11 +81,12 @@ function DownloadOptionItems({
   state: LoadState
   onPick: (rendition?: string) => void
 }) {
+  const t = useTranslations('common')
   if (state === 'loading' || state === 'idle') {
     return (
       <div className="flex items-center gap-2 mx-1 px-2.5 py-2 text-sm text-text-tertiary">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        Loading…
+        {t('loading')}
       </div>
     )
   }
@@ -92,7 +96,7 @@ function DownloadOptionItems({
     return (
       <MenuItem onSelect={() => onPick()} className={menuItemClass}>
         <Download className="h-3.5 w-3.5 text-text-tertiary" />
-        Download
+        {t('download')}
       </MenuItem>
     )
   }
@@ -124,6 +128,7 @@ export function DownloadMenu({
   children: React.ReactNode
   align?: 'start' | 'center' | 'end'
 }) {
+  const t = useTranslations('common')
   const { options, state, refresh } = useDownloadOptions(load)
   const contentRef = React.useRef<HTMLDivElement>(null)
   useFocusFirstItemWhenLoaded(contentRef, state)
@@ -140,7 +145,7 @@ export function DownloadMenu({
           // sit inside clickable cards and rows.
           onClick={(e) => e.stopPropagation()}
         >
-          <MenuLabel>Download</MenuLabel>
+          <MenuLabel>{t('download')}</MenuLabel>
           <DownloadOptionItems options={options} state={state} onPick={onPick} />
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
@@ -157,6 +162,7 @@ export function DownloadSubmenu({
   load: () => Promise<DownloadOption[] | null>
   onPick: (rendition?: string) => void
 }) {
+  const t = useTranslations('common')
   const { options, state, refresh } = useDownloadOptions(load)
   const contentRef = React.useRef<HTMLDivElement>(null)
   useFocusFirstItemWhenLoaded(contentRef, state)
@@ -164,7 +170,7 @@ export function DownloadSubmenu({
     <MenuSub onOpenChange={(open) => { if (open) void refresh() }}>
       <MenuSubTrigger className={cn(menuItemClass, 'data-[state=open]:bg-bg-hover data-[state=open]:text-text-primary')}>
         <Download className="h-3.5 w-3.5 text-text-tertiary" />
-        <span className="flex-1">Download</span>
+        <span className="flex-1">{t('download')}</span>
         <ChevronRight className="h-3.5 w-3.5 text-text-tertiary" />
       </MenuSubTrigger>
       <MenuSubContent

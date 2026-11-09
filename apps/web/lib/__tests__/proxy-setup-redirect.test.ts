@@ -68,3 +68,38 @@ describe('proxy setup redirect', () => {
     expect(res.cookies.get('ff_setup_done')).toBeUndefined()
   })
 })
+
+describe('proxy ?lang override', () => {
+  it('stores a share link language in the locale cookie and strips the parameter', async () => {
+    vi.resetModules()
+    const { proxy } = await import('../../proxy')
+
+    const res = await proxy(new NextRequest('http://localhost:3000/share/tok123?lang=zh&x=1'))
+
+    expect(res.status).toBe(307)
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe('/share/tok123')
+    expect(location.searchParams.get('lang')).toBeNull()
+    expect(location.searchParams.get('x')).toBe('1')
+    expect(res.cookies.get('ff_locale')?.value).toBe('zh')
+  })
+
+  it('accepts a regional language tag', async () => {
+    vi.resetModules()
+    const { proxy } = await import('../../proxy')
+
+    const res = await proxy(new NextRequest('http://localhost:3000/share/tok123?lang=zh-CN'))
+
+    expect(res.cookies.get('ff_locale')?.value).toBe('zh')
+  })
+
+  it('ignores an unsupported language and leaves the page alone', async () => {
+    vi.resetModules()
+    const { proxy } = await import('../../proxy')
+
+    const res = await proxy(new NextRequest('http://localhost:3000/share/tok123?lang=fr'))
+
+    expect(res.status).toBe(200)
+    expect(res.cookies.get('ff_locale')).toBeUndefined()
+  })
+})

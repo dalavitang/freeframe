@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { useViewStore } from '@/stores/view-store'
 import { useBreadcrumbStore } from '@/stores/breadcrumb-store'
-import { LocaleSwitcher } from '@/components/shared/locale-switcher'
 
 interface HeaderProps {
   onSearchOpen: () => void
@@ -132,8 +131,6 @@ export function Header({ onSearchOpen }: HeaderProps) {
           </button>
         )}
 
-        {/* Language switcher */}
-        <LocaleSwitcher />
       </div>
     </header>
   )

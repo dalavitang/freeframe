@@ -695,7 +695,11 @@
     "comment": "评论",
     "bothNameEmailRequired": "姓名和邮箱均为必填项。",
     "validEmail": "请输入有效的邮箱地址。",
-    "noCommentsYet": "暂无评论"
+    "noCommentsYet": "暂无评论",
+    "panel": "评论面板",
+    "panelCount": "评论面板，{count} 条评论",
+    "openPanel": "打开评论",
+    "closePanel": "关闭评论"
   },
   "annotation": {
     "pen": "画笔",

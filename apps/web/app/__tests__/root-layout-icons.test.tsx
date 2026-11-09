@@ -26,6 +26,9 @@ vi.mock('next-intl/server', async () => {
 vi.mock('@/components/shared/locale-initializer', () => ({
   LocaleInitializer: () => null,
 }))
+vi.mock('@/components/shared/global-locale-switcher', () => ({
+  GlobalLocaleSwitcher: () => null,
+}))
 vi.mock('next/font/google', () => ({
   DM_Sans: () => ({ variable: 'font-dm-sans', className: 'font-dm-sans' }),
 }))
