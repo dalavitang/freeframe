@@ -1,5 +1,15 @@
 FROM python:3.11-slim
 
+# Optional Debian mirror, e.g. mirrors.tuna.tsinghua.edu.cn. Empty keeps
+# deb.debian.org. Debian 12 keeps its sources in deb822 files under
+# /etc/apt/sources.list.d/, so rewrite every file that exists.
+ARG APT_MIRROR=
+RUN if [ -n "$APT_MIRROR" ]; then \
+        for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources; do \
+            [ -f "$f" ] && sed -i "s|deb.debian.org|$APT_MIRROR|g" "$f"; \
+        done; \
+    fi
+
 WORKDIR /workspace
 
 # Base image is CPU/software-only and architecture-agnostic (builds cleanly on
