@@ -549,7 +549,11 @@
     "showCardInfoDesc": "Display name, type, and size below thumbnail",
     "landscape": "Landscape",
     "square": "Square",
-    "portrait": "Portrait"
+    "portrait": "Portrait",
+    "language": "Language",
+    "languageViewer": "Viewer's browser",
+    "languageEnglish": "English",
+    "languageChinese": "中文"
   },
   "auth": {
     "login": {

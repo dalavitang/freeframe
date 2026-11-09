@@ -6,6 +6,10 @@ from ..models.share import SharePermission, ShareVisibility
 
 
 class ShareLinkAppearance(BaseModel):
+    # "viewer" follows the visitor's own language/cookie. "en" and "zh" give
+    # the link a default language, applied through ?lang= on the share URL and
+    # as a fallback when the link is opened without it.
+    language: Literal["viewer", "en", "zh"] = "viewer"
     layout: Literal["grid", "list"] = "grid"
     theme: Literal["dark", "light"] = "dark"
     accent_color: Optional[str] = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")

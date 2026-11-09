@@ -278,3 +278,24 @@ describe('ShareCreateDialog appearance', () => {
     })
   })
 })
+
+describe('ShareCreateDialog link language', () => {
+  beforeEach(() => {
+    post.mockReset().mockResolvedValue({ token: 'tok', title: 't' })
+    patch.mockReset().mockResolvedValue({})
+    get.mockReset().mockResolvedValue({})
+  })
+
+  it('sends the chosen language and puts ?lang= on the created URL', async () => {
+    renderDialog()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), {
+      target: { value: 'zh' },
+    })
+
+    expect(createAndSentAppearance()).toEqual({
+      ...DEFAULT_SHARE_APPEARANCE,
+      language: 'zh',
+    })
+    expect(await screen.findByText(/\?lang=zh/)).toBeInTheDocument()
+  })
+})

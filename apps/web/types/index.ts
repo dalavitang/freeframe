@@ -287,6 +287,8 @@ export interface Approval {
 }
 
 export interface ShareLinkAppearance {
+  /** "viewer" follows the visitor's browser/cookie; "en"/"zh" set a link default. */
+  language?: "viewer" | "en" | "zh"
   layout: "grid" | "list"
   theme: "dark" | "light"
   accent_color: string | null

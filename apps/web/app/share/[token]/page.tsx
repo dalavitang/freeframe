@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Lock,
   AlertTriangle,
@@ -8,6 +9,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { withBasePath } from '@/lib/base-path'
+import { getCookieValue, setLocaleCookie, LOCALE_COOKIE, LOCALE_EXPLICIT_COOKIE } from '@/lib/i18n'
 import { useTranslations } from 'next-intl'
 import { resolveBrandingLogo } from '@/lib/branding-logo'
 import { Button } from '@/components/ui/button'
@@ -244,6 +246,24 @@ function ErrorState({ expired }: ErrorStateProps) {
 // ShareReviewScreen the folder path does, so they had no reachable caller left
 // (#117, #123).
 
+/**
+ * A link can carry its own default language. Apply it once the link data is in,
+ * unless the viewer has explicitly chosen a language themselves. URLs created
+ * by FreeFrame already carry ?lang=, so this is the fallback for a bare token
+ * URL opened from elsewhere. It is a child so the router hook is never called
+ * on links that have no language of their own.
+ */
+function ShareLanguageDefault({ language }: { language: 'en' | 'zh' }) {
+  const router = useRouter()
+  React.useEffect(() => {
+    if (getCookieValue(LOCALE_EXPLICIT_COOKIE)) return
+    if (getCookieValue(LOCALE_COOKIE) === language) return
+    setLocaleCookie(language)
+    router.refresh()
+  }, [language, router])
+  return null
+}
+
 export default function SharePage({
   params,
 }: {
@@ -287,6 +307,7 @@ export default function SharePage({
   const [shareSession, setShareSession] = React.useState<string | null>(null)
   const openLogged = React.useRef(false)
   useEnsureBranding()
+
 
   async function validate(password?: string) {
     if (password) {
@@ -430,38 +451,50 @@ export default function SharePage({
     )
   }
 
+  const languageDefault =
+    (state.stage === 'ready' || state.stage === 'folder_ready') &&
+    (state.appearance?.language === 'en' || state.appearance?.language === 'zh')
+      ? <ShareLanguageDefault language={state.appearance.language} />
+      : null
+
   if (state.stage === 'folder_ready') {
     return (
-      <FolderShareViewer
+      <>
+        {languageDefault}
+        <FolderShareViewer
+          token={token}
+          shareSession={shareSession}
+          folderName={state.folderName}
+          title={state.title}
+          description={state.description}
+          createdByName={state.createdByName}
+          viewerName={state.viewerName}
+          viewerAvatarUrl={state.viewerAvatarUrl}
+          viewerAvatarColor={state.viewerAvatarColor}
+          permission={state.permission}
+          allowDownload={state.allowDownload}
+          showVersions={state.showVersions}
+          appearance={state.appearance}
+          branding={state.branding}
+        />
+      </>
+    )
+  }
+
+  return (
+    <>
+      {languageDefault}
+      <SingleAssetShareViewer
         token={token}
-        shareSession={shareSession}
-        folderName={state.folderName}
-        title={state.title}
-        description={state.description}
-        createdByName={state.createdByName}
-        viewerName={state.viewerName}
-        viewerAvatarUrl={state.viewerAvatarUrl}
-        viewerAvatarColor={state.viewerAvatarColor}
+        asset={state.asset}
         permission={state.permission}
         allowDownload={state.allowDownload}
         showVersions={state.showVersions}
         appearance={state.appearance}
         branding={state.branding}
+        shareSession={shareSession}
       />
-    )
-  }
-
-  return (
-    <SingleAssetShareViewer
-      token={token}
-      asset={state.asset}
-      permission={state.permission}
-      allowDownload={state.allowDownload}
-      showVersions={state.showVersions}
-      appearance={state.appearance}
-      branding={state.branding}
-      shareSession={shareSession}
-    />
+    </>
   )
 }
 

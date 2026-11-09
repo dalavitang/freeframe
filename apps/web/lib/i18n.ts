@@ -1,4 +1,6 @@
 export const LOCALE_COOKIE = 'ff_locale'
+/** Set only when the viewer picks a language themselves, so link defaults never override it. */
+export const LOCALE_EXPLICIT_COOKIE = 'ff_locale_explicit'
 
 export const SUPPORTED_LOCALES = ['en', 'zh'] as const
 
@@ -54,4 +56,10 @@ export function getCookieValue(name: string): string | null {
 export function setLocaleCookie(locale: Locale): void {
   if (typeof document === 'undefined') return
   document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
+}
+
+/** Remember that the language is the viewer's own choice, not a link default. */
+export function setLocaleExplicitCookie(): void {
+  if (typeof document === 'undefined') return
+  document.cookie = `${LOCALE_EXPLICIT_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`
 }

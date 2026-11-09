@@ -24,11 +24,11 @@ import {
   Droplets,
   LayoutGrid,
   Paintbrush,
+  Languages,
 } from 'lucide-react'
 import * as Switch from '@radix-ui/react-switch'
 import { useTranslations } from 'next-intl'
 import { cn, copyToClipboard, dateInputValue, endOfDayISO } from '@/lib/utils'
-import { withBasePath } from '@/lib/base-path'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import {
@@ -36,6 +36,7 @@ import {
   DEFAULT_SHARE_APPEARANCE,
   appearanceFromView,
 } from '@/components/projects/share-appearance-fields'
+import { sharePageUrl } from '@/lib/share-url'
 import type { AssetResponse, Folder, ShareLink, ShareLinkAppearance } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -92,10 +93,12 @@ function AssetTypeIcon({ type, className }: { type: string; className?: string }
 
 // ─── Share URL helper ────────────────────────────────────────────────────────
 
-function buildShareUrl(token: string): string {
-  return typeof window !== 'undefined'
-    ? `${window.location.origin}${withBasePath(`/share/${token}`)}`
-    : withBasePath(`/share/${token}`)
+function buildShareUrl(token: string, language?: ShareLinkAppearance['language']): string {
+  return sharePageUrl(
+    token,
+    language,
+    typeof window !== 'undefined' ? window.location.origin : undefined,
+  )
 }
 
 // ─── Copy button ─────────────────────────────────────────────────────────────
@@ -328,6 +331,7 @@ interface ConfigurePhaseProps {
 function ConfigurePhase({ defaultTitle, onBack, onCreate, creating, createdUrl, onClose, linkKind, canCopyCurrentView }: ConfigurePhaseProps) {
   const t = useTranslations('shareLinks')
   const tc = useTranslations('common')
+  const tap = useTranslations('appearance')
   const [title, setTitle] = React.useState(defaultTitle)
   // Comments on, downloads off, matching ShareLinkCreate on the API. Both have to
   // move together or a link created through the API keeps the old behaviour while
@@ -413,6 +417,29 @@ function ConfigurePhase({ defaultTitle, onBack, onCreate, creating, createdUrl, 
             >
               <option value="public">🌐 Public</option>
               <option value="secure">🔒 Secure</option>
+            </select>
+          </div>
+
+          {/* Language — the link's default for first-time viewers */}
+          <div className="flex items-center justify-between py-2.5">
+            <div className="flex items-center gap-2.5">
+              <Languages className="h-4 w-4 text-text-tertiary" />
+              <span className="text-sm text-text-primary">{tap('language')}</span>
+            </div>
+            <select
+              aria-label={tap('language')}
+              value={appearance.language ?? 'viewer'}
+              onChange={(e) =>
+                setAppearance((a) => ({
+                  ...a,
+                  language: e.target.value as ShareLinkAppearance['language'],
+                }))
+              }
+              className="shrink-0 rounded-full border border-border bg-bg-secondary px-2 py-0.5 text-2xs font-medium text-text-primary outline-none cursor-pointer"
+            >
+              <option value="viewer">{tap('languageViewer')}</option>
+              <option value="en">{tap('languageEnglish')}</option>
+              <option value="zh">{tap('languageChinese')}</option>
             </select>
           </div>
 
@@ -546,6 +573,7 @@ function ConfigurePhase({ defaultTitle, onBack, onCreate, creating, createdUrl, 
               <ShareAppearanceFields
                 appearance={appearance}
                 kind={linkKind}
+                showLanguage={false}
                 onChange={(patch) => setAppearance((a) => ({ ...a, ...patch }))}
                 onUseCurrentView={
                   canCopyCurrentView
@@ -770,7 +798,7 @@ function LinkCreatedPhase({ result, allResults, onSelectResult, onDone, onAdvanc
     return () => { cancelled = true }
   }, [result.token])
 
-  const shareUrl = buildShareUrl(result.token)
+  const shareUrl = buildShareUrl(result.token, appearance.language)
 
   async function handleSaveTitle() {
     if (!title.trim() || title === result.title) {
@@ -1292,7 +1320,7 @@ export function ShareCreateDialog({
 
       onShareCreated()
       // Stay open so the person can copy the new link; Create becomes Close.
-      setCreatedUrl(buildShareUrl(shareLink.token))
+      setCreatedUrl(buildShareUrl(shareLink.token, config.appearance.language))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('createFailed'))
     } finally {

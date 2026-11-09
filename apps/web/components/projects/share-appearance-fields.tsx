@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useTranslations } from 'next-intl'
 import {
   LayoutGrid,
   List,
@@ -178,6 +179,7 @@ export function ShareAppearanceFields({
   onChange,
   onUseCurrentView,
   kind = 'collection',
+  showLanguage = true,
 }: {
   appearance: ShareLinkAppearance
   onChange: (patch: Partial<ShareLinkAppearance>) => void
@@ -189,7 +191,10 @@ export function ShareAppearanceFields({
    */
   onUseCurrentView?: () => void
   kind?: 'asset' | 'collection'
+  /** The create dialog puts the language next to Visibility; its Appearance block hides it. */
+  showLanguage?: boolean
 }) {
+  const t = useTranslations('appearance')
   const isCollection = kind === 'collection'
   const isGrid = appearance.layout === 'grid'
 
@@ -279,6 +284,18 @@ export function ShareAppearanceFields({
       <div className={cn('space-y-3', isCollection && 'pt-3 border-t border-border')}>
         {isCollection && (
           <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-wider">Page</p>
+        )}
+        {showLanguage && (
+          <SelectRow<NonNullable<ShareLinkAppearance['language']>>
+            label={t('language')}
+            value={appearance.language ?? 'viewer'}
+            options={[
+              { value: 'viewer', label: t('languageViewer') },
+              { value: 'en', label: t('languageEnglish') },
+              { value: 'zh', label: t('languageChinese') },
+            ]}
+            onChange={(language) => onChange({ language })}
+          />
         )}
         <SegmentRow<ShareLinkAppearance['theme']>
           label="Theme"

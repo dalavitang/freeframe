@@ -12,6 +12,7 @@ import {
   getCookieValue,
   localeNames,
   setLocaleCookie,
+  setLocaleExplicitCookie,
   type Locale,
 } from '@/lib/i18n'
 
@@ -30,6 +31,7 @@ export function LocaleSwitcher() {
   function switchTo(next: Locale) {
     if (next === locale) return
     setLocaleCookie(next)
+    setLocaleExplicitCookie()
     setLocale(next)
     router.refresh()
   }

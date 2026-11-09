@@ -549,7 +549,11 @@
     "showCardInfoDesc": "在缩略图下方显示名称、类型和大小",
     "landscape": "横向",
     "square": "方形",
-    "portrait": "纵向"
+    "portrait": "纵向",
+    "language": "语言",
+    "languageViewer": "跟随访客浏览器",
+    "languageEnglish": "English",
+    "languageChinese": "中文"
   },
   "auth": {
     "login": {

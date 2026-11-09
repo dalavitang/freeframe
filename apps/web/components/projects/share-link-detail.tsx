@@ -22,6 +22,7 @@ import {
 import { cn, copyToClipboard, dateInputValue, endOfDayISO } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import { withBasePath } from "@/lib/base-path";
+import { sharePageUrl } from "@/lib/share-url";
 import { api } from "@/lib/api";
 import { ShareLinkActivityPanel } from "@/components/projects/share-link-activity";
 import {
@@ -639,7 +640,7 @@ export function ShareLinkContent({
     };
   }, [projectId]);
 
-  const shareUrl = `${frontendUrl}${withBasePath(`/share/${token}`)}`;
+  const shareUrl = sharePageUrl(token, shareLink?.appearance?.language, frontendUrl);
 
   // Mirror how the share page itself renders this link (folder-share-viewer):
   // card size picks the grid columns, aspect ratio and fit/fill the thumbnail
@@ -926,10 +927,11 @@ export function ShareLinkSettingsPanel({ token }: ShareLinkSettingsPanelProps) {
     }
   }, [shareLink]);
 
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${withBasePath(`/share/${token}`)}`
-      : withBasePath(`/share/${token}`);
+  const shareUrl = sharePageUrl(
+    token,
+    shareLink?.appearance?.language,
+    typeof window !== "undefined" ? window.location.origin : undefined,
+  );
 
   if (!shareLink) {
     return (
