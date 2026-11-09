@@ -921,8 +921,9 @@ export function FolderShareViewer({
           <span className="text-[13px] font-medium text-text-primary truncate">{currentTitle}</span>
         </div>
 
-        {/* Right: Download All + panel toggle */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: Download All + panel toggle. pr-10 leaves the top-right
+            corner to the global language switcher. */}
+        <div className="flex items-center gap-2 shrink-0 pr-10">
           {allowDownload && (
             <button
               className="flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-medium text-white bg-accent hover:bg-accent-hover transition-colors"
@@ -935,7 +936,7 @@ export function FolderShareViewer({
           <button
             onClick={() => setPanelOpen((v) => !v)}
             className="flex items-center justify-center h-7 w-7 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
-            title={panelOpen ? 'Hide panel' : 'Show panel'}
+            title={t(panelOpen ? 'hidePanel' : 'showPanel')}
           >
             {panelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
           </button>

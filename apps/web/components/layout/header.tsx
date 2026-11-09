@@ -97,8 +97,9 @@ export function Header({ onSearchOpen }: HeaderProps) {
         })}
       </nav>
 
-      {/* Right side actions */}
-      <div className="flex items-center gap-1.5">
+      {/* Right side actions. pr-10 leaves the top-right corner to the
+          global language switcher, which is fixed above every page. */}
+      <div className="flex items-center gap-1.5 pr-10">
         {/* Search trigger */}
         <button
           onClick={onSearchOpen}

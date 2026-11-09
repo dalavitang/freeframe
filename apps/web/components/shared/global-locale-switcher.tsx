@@ -14,7 +14,7 @@ import { LocaleSwitcher } from '@/components/shared/locale-switcher'
 export function GlobalLocaleSwitcher() {
   return (
     <div
-      className="fixed right-3 top-14 z-[60] rounded-full border border-border bg-bg-secondary/85 p-1 shadow-sm backdrop-blur-sm print:hidden"
+      className="fixed right-3 top-1.5 z-[60] rounded-full border border-border bg-bg-secondary/85 p-1 shadow-sm backdrop-blur-sm print:hidden"
       data-testid="global-locale-switcher"
     >
       <LocaleSwitcher />

@@ -309,7 +309,7 @@ function ShareReviewInner({
               and Download is icon-only on a phone. */}
           <span className="text-[13px] font-medium text-text-primary truncate min-w-[4rem]">{assetName}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pr-10">
           {showVersions && VersionSwitcher && versions.length > 0 && (
             <VersionSwitcher versions={versions} />
           )}
