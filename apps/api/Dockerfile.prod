@@ -44,8 +44,17 @@ RUN apt-get update && apt-get install -y \
 
 # Install API dependencies. gunicorn is in requirements.txt, so it is pinned and
 # Dependabot sees it; this image must not install it again.
+# PIP_INDEX_URL is optional, for build hosts where PyPI itself is slow
+# (e.g. https://pypi.tuna.tsinghua.edu.cn/simple). Empty uses the default index.
+ARG PIP_INDEX_URL=
 COPY apps/api/requirements.txt /workspace/apps/api/requirements.txt
-RUN pip install --no-cache-dir -r /workspace/apps/api/requirements.txt
+RUN if [ -n "$PIP_INDEX_URL" ]; then \
+        pip install --no-cache-dir --timeout 120 --retries 5 \
+            --index-url "$PIP_INDEX_URL" -r /workspace/apps/api/requirements.txt; \
+    else \
+        pip install --no-cache-dir --timeout 120 --retries 5 \
+            -r /workspace/apps/api/requirements.txt; \
+    fi
 
 # Copy transcoder package and API
 COPY packages/transcoder /workspace/packages/transcoder
