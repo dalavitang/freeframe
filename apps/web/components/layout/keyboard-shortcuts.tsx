@@ -61,9 +61,9 @@ export function KeyboardShortcuts({
       title: t('groupReview'),
       items: [
         { keys: ['Space'], label: t('playPauseMedia') },
-        { keys: ['J'], label: t('jumpBack10') },
-        { keys: ['K'], label: t('playPause') },
-        { keys: ['L'], label: t('jumpForward10') },
+        { keys: ['J'], label: t('shuttleReverse') },
+        { keys: ['K'], label: t('stopPlay') },
+        { keys: ['L'], label: t('shuttleForward') },
       ],
     },
     {

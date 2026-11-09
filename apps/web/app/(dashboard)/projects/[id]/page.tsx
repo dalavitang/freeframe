@@ -436,7 +436,7 @@ export default function ProjectDetailPage() {
           toast.error(t("anotherAccountSignedIn"));
       });
     },
-    [projectId, project?.name, toast],
+    [projectId, project?.name, toast, t],
   );
 
   // Drops made while the role is still loading, each with the project it was
@@ -475,7 +475,7 @@ export default function ProjectDetailPage() {
       return;
     }
     for (const d of held) queueDrop(d.folderId, d.dropped, d.owner);
-  }, [dropRole, projectId, queueDrop, toast]);
+  }, [dropRole, projectId, queueDrop, toast, t]);
 
   const {
     regionRef: dropRegion,

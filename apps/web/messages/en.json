@@ -38,7 +38,8 @@
     "on": "On",
     "off": "Off",
     "unknown": "Unknown",
-    "download": "Download"
+    "download": "Download",
+    "copyLink": "Copy Link"
   },
   "locale": {
     "language": "Language",
@@ -184,7 +185,10 @@
     "deselectAll": "Deselect all",
     "postComment": "Post comment",
     "newLine": "New line",
-    "cancelReply": "Cancel reply"
+    "cancelReply": "Cancel reply",
+    "shuttleReverse": "Play in reverse; press again to go faster",
+    "stopPlay": "Stop / play",
+    "shuttleForward": "Play forward; press again to go faster"
   },
   "errors": {
     "notFoundTitle": "Page not found",
@@ -424,7 +428,7 @@
     "permissionComment": "comment",
     "permissionApprove": "approve",
     "advancedSettings": "Advanced settings",
-    "copyLink": "Copy Link",
+    "copyLink": "Copy link",
     "createFailed": "Failed to create share link",
     "sharedFolder": "Shared Folder",
     "sharedProject": "Shared Project",
@@ -1242,7 +1246,18 @@
     "partAutomatic": "Automatic",
     "partFixed": "Fixed",
     "originalsTranscode": "Transcode only",
-    "originalsBoth": "Original or transcode"
+    "originalsBoth": "Original or transcode",
+    "sectionReviewStreams": "Review streams",
+    "compressionLabel": "Compression: {value}",
+    "compressionCustomEnv": "Custom (env)",
+    "compressionHint": "How hard video review streams are compressed, from highest quality to smallest files. Less compression means a cleaner picture in dark and graded shots, and larger files. Applies to versions uploaded from now on; videos already transcoded keep the streams they have.",
+    "compressionCustomHint": "Currently set by TRANSCODER_CRF_OFFSET ({offset}), which is not one of the steps. Moving the slider overrides it.",
+    "useServerDefault": "Use server default",
+    "compressionHighest": "Highest quality",
+    "compressionHigher": "Higher quality",
+    "compressionBalanced": "Balanced",
+    "compressionSmaller": "Smaller files",
+    "compressionSmallest": "Smallest files"
   },
   "brandingTab": {
     "identity": "Identity",

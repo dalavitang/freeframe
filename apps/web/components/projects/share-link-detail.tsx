@@ -19,7 +19,7 @@ import {
   Globe,
   X,
 } from "lucide-react";
-import { cn, dateInputValue, endOfDayISO } from "@/lib/utils";
+import { cn, copyToClipboard, dateInputValue, endOfDayISO } from "@/lib/utils";
 import { useLocale, useTranslations } from "next-intl";
 import { withBasePath } from "@/lib/base-path";
 import { api } from "@/lib/api";
@@ -429,13 +429,9 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
   const [copied, setCopied] = React.useState(false);
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-    }
+    if (!(await copyToClipboard(text))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -469,13 +465,9 @@ function CopyLinkButton({ text }: { text: string }) {
   const [copied, setCopied] = React.useState(false);
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-    }
+    if (!(await copyToClipboard(text))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (
@@ -633,7 +625,7 @@ export function ShareLinkContent({
           setPreviewFolders([]);
         });
     }
-  }, [shareLink, projectId]);
+  }, [shareLink, projectId, token]);
 
   const isAssetLink = !!shareLink?.asset_id;
   React.useEffect(() => {

@@ -38,7 +38,8 @@
     "on": "开启",
     "off": "关闭",
     "unknown": "未知",
-    "download": "下载"
+    "download": "下载",
+    "copyLink": "复制链接"
   },
   "locale": {
     "language": "语言",
@@ -184,7 +185,10 @@
     "deselectAll": "取消全选",
     "postComment": "发表评论",
     "newLine": "换行",
-    "cancelReply": "取消回复"
+    "cancelReply": "取消回复",
+    "shuttleReverse": "倒放；再次按下可加速",
+    "stopPlay": "停止 / 播放",
+    "shuttleForward": "正放；再次按下可加速"
   },
   "errors": {
     "notFoundTitle": "页面未找到",
@@ -1242,7 +1246,18 @@
     "partAutomatic": "自动",
     "partFixed": "固定",
     "originalsTranscode": "仅转码",
-    "originalsBoth": "原片或转码"
+    "originalsBoth": "原片或转码",
+    "sectionReviewStreams": "审片流",
+    "compressionLabel": "压缩：{value}",
+    "compressionCustomEnv": "自定义（环境变量）",
+    "compressionHint": "视频审片流的压缩程度，从最高画质到最小文件。压缩越少，暗部和调色镜头越干净，文件也越大。仅适用于此后上传的版本；已转码的视频保留现有流。",
+    "compressionCustomHint": "当前由 TRANSCODER_CRF_OFFSET（{offset}）设置，不属于预设档位。移动滑块会覆盖它。",
+    "useServerDefault": "使用服务器默认值",
+    "compressionHighest": "最高画质",
+    "compressionHigher": "较高画质",
+    "compressionBalanced": "均衡",
+    "compressionSmaller": "较小文件",
+    "compressionSmallest": "最小文件"
   },
   "brandingTab": {
     "identity": "身份标识",

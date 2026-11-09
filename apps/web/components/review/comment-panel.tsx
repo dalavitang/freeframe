@@ -28,7 +28,7 @@ import {
   Lock,
   Download,
 } from "lucide-react";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, copyToClipboard, formatTime } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useFormatters } from "@/hooks/use-formatters";
 import { useReviewStore } from "@/stores/review-store";
@@ -245,12 +245,12 @@ function CommentMenu({
               url = new URL(window.location.href)
             }
             url.searchParams.set('commentId', commentId)
-            navigator.clipboard.writeText(url.toString())
+            void copyToClipboard(url.toString())
             setOpen(false)
           }}
         >
           <Link2 className="h-3.5 w-3.5" />
-          {ts("copyLink")}
+          {tc("copyLink")}
         </button>
         <button
           className="flex w-full items-center gap-2.5 px-3 py-2 text-[13px] text-red-400 hover:bg-bg-tertiary transition-colors"

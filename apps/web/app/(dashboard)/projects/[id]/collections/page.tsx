@@ -17,7 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { cn } from "@/lib/utils";
+import { cn, copyToClipboard } from "@/lib/utils";
 import { withBasePath } from "@/lib/base-path";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -183,13 +183,9 @@ function CollectionShareDialog({
   }
 
   async function handleCopy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
+    if (!(await copyToClipboard(text))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   return (

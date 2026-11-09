@@ -90,6 +90,7 @@ vi.mock('@/hooks/use-video-player', () => ({
 // tests can assert on calls; transportIsPlaying is read at render time.
 const transportSeekTo = vi.fn()
 const transportToggle = vi.fn()
+const transportPause = vi.fn()
 const transportSetIsPlaying = vi.fn()
 let transportIsPlaying = false
 // Pin the transport clock so pane-local timecodes are deterministic (t = 12.5s).
@@ -102,7 +103,7 @@ vi.mock('../use-synced-transport', () => ({
     playerA: { videoRef: { current: null } },
     playerB: { videoRef: { current: null } },
     t: 12.5, total: 60, isPlaying: transportIsPlaying,
-    toggle: transportToggle, seekTo: transportSeekTo, setIsPlaying: transportSetIsPlaying,
+    toggle: transportToggle, pause: transportPause, seekTo: transportSeekTo, setIsPlaying: transportSetIsPlaying,
   }),
 }))
 
@@ -145,6 +146,7 @@ beforeEach(() => {
   for (const k of Object.keys(commentsByVersion)) delete commentsByVersion[k]
   transportSeekTo.mockClear()
   transportToggle.mockClear()
+  transportPause.mockClear()
   transportSetIsPlaying.mockClear()
   transportIsPlaying = false
   replace.mockReset()
@@ -361,7 +363,7 @@ describe('CompareOverlay per-side audio toggle', () => {
 })
 
 describe('CompareOverlay marker click', () => {
-  it('seeks with the offset, pauses via toggle (not setIsPlaying), focuses the comment, and opens the closed panel', () => {
+  it('seeks with the offset, requests pause (not setIsPlaying), focuses the comment, and opens the closed panel', () => {
     commentsByVersion['v-1'] = [makeComment('c1', 'v-1')]
     transportIsPlaying = true
     renderWithI18n(
@@ -374,13 +376,13 @@ describe('CompareOverlay marker click', () => {
 
     // offA defaults to 0 (mocked searchParams carries no offA/offB).
     expect(transportSeekTo).toHaveBeenCalledWith(5)
-    expect(transportToggle).toHaveBeenCalledTimes(1)
+    expect(transportPause).toHaveBeenCalledTimes(1)
     expect(transportSetIsPlaying).not.toHaveBeenCalled()
     expect(useReviewStore.getState().focusedCommentId).toBe('c1')
     expect(screen.getByText('Fix the color grade')).toBeInTheDocument()
   })
 
-  it('does not pause when already paused', () => {
+  it('requests an idempotent pause when already paused', () => {
     commentsByVersion['v-1'] = [makeComment('c2', 'v-1')]
     transportIsPlaying = false
     renderWithI18n(
@@ -389,6 +391,7 @@ describe('CompareOverlay marker click', () => {
     fireEvent.click(screen.getByTestId('marker-a-c2'))
     expect(transportSeekTo).toHaveBeenCalledWith(5)
     expect(transportToggle).not.toHaveBeenCalled()
+    expect(transportPause).toHaveBeenCalledTimes(1)
     expect(useReviewStore.getState().focusedCommentId).toBe('c2')
   })
 })
@@ -1062,7 +1065,7 @@ describe('CompareOverlay per-pane annotation display', () => {
 })
 
 describe('CompareOverlay comment click pause parity', () => {
-  it('comment row click while playing seeks pane-local AND pauses via toggle', () => {
+  it('comment row click while playing seeks pane-local and requests pause', () => {
     commentsByVersion['v-3'] = [makeComment('c3', 'v-3')]
     transportIsPlaying = true
     renderWithI18n(
@@ -1071,10 +1074,10 @@ describe('CompareOverlay comment click pause parity', () => {
     // Right panel is open by default — CommentItem's row click passes pause=true.
     fireEvent.click(screen.getByText('Fix the color grade'))
     expect(transportSeekTo).toHaveBeenCalledWith(5)
-    expect(transportToggle).toHaveBeenCalledTimes(1)
+    expect(transportPause).toHaveBeenCalledTimes(1)
   })
 
-  it('does not pause when already paused', () => {
+  it('requests an idempotent pause when already paused', () => {
     commentsByVersion['v-3'] = [makeComment('c3', 'v-3')]
     transportIsPlaying = false
     renderWithI18n(
@@ -1083,6 +1086,7 @@ describe('CompareOverlay comment click pause parity', () => {
     fireEvent.click(screen.getByText('Fix the color grade'))
     expect(transportSeekTo).toHaveBeenCalledWith(5)
     expect(transportToggle).not.toHaveBeenCalled()
+    expect(transportPause).toHaveBeenCalledTimes(1)
   })
 })
 
